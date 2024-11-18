@@ -1,0 +1,103 @@
+@using TruckDeliveryPlatform.Helpers
+@using TruckDeliveryPlatform.Models
+@model PaginatedList<Job>
+
+<div class="container">
+    <h2>My Jobs</h2>
+    
+    <a asp-action="Create" class="btn btn-primary mb-3">
+        <i class="fas fa-plus-circle me-2"></i>Post New Job
+    </a>
+    
+    <div class="row">
+        @foreach (var job in Model)
+        {
+            var statusClass = job.Status switch
+            {
+                JobStatus.Active => "primary",
+                JobStatus.InProgress => "info",
+                JobStatus.Completed => "success",
+                JobStatus.Canceled => "danger",
+                _ => "secondary"
+            };
+
+            <div class="col-md-6 mb-4">
+                <div class="card">
+                    <div class="card-header bg-@statusClass bg-opacity-10">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h5 class="card-title mb-0">@job.PickupLocation → @job.DropoffLocation</h5>
+                            <span class="badge bg-@statusClass">@job.Status</span>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <div><strong>Goods:</strong> @job.GoodsType</div>
+                            <div><strong>Weight:</strong> @job.Weight kg</div>
+                            <div><strong>Size:</strong> @job.Size</div>
+                            <div><strong>Pickup Date:</strong> @job.PreferredPickupDate.ToString("MMM dd, yyyy")</div>
+                        </div>
+
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <div class="text-muted">Your Budget:</div>
+                                <div class="h5">@((int)job.EstimatedCost) EGP</div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="text-muted">Bids:</div>
+                                <div class="h5">
+                                    @job.BidsCount
+                                    @if (job.AcceptedBidAmount.HasValue)
+                                    {
+                                        <span class="text-success ms-2">
+                                            <i class="fas fa-check-circle"></i>
+                                            @((int)job.AcceptedBidAmount.Value) EGP
+                                        </span>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="d-flex justify-content-between align-items-center">
+                            <small class="text-muted">
+                                Posted @job.CreatedAt.ToString("MMM dd, yyyy HH:mm")
+                            </small>
+                            <a asp-action="Details" asp-route-id="@job.Id" class="btn btn-outline-@statusClass">
+                                <i class="fas fa-eye me-1"></i>View Details
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+
+    @{
+        var prevDisabled = !Model.HasPreviousPage ? "disabled" : "";
+        var nextDisabled = !Model.HasNextPage ? "disabled" : "";
+    }
+
+    <div class="d-flex justify-content-between align-items-center mt-4">
+        <div>
+            Showing @((Model.PageIndex - 1) * 10 + 1) to @(Math.Min(Model.PageIndex * 10, Model.TotalItems)) of @Model.TotalItems items
+        </div>
+        <div class="btn-group">
+            <a asp-action="Index"
+               asp-route-page="@(Model.PageIndex - 1)"
+               class="btn btn-outline-primary @prevDisabled">
+                <i class="fas fa-chevron-left"></i> Previous
+            </a>
+            <a asp-action="Index"
+               asp-route-page="@(Model.PageIndex + 1)"
+               class="btn btn-outline-primary @nextDisabled">
+                Next <i class="fas fa-chevron-right"></i>
+            </a>
+        </div>
+    </div>
+
+    @if (!Model.Any())
+    {
+        <div class="alert alert-info mt-4">
+            You haven't posted any jobs yet.
+        </div>
+    }
+</div> 

@@ -1,0 +1,170 @@
+@model TruckOwnerProfileViewModel
+
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-body">
+                    <h2 class="card-title text-center mb-4">
+                        <i class="fas fa-user-edit me-2"></i>Edit Profile
+                    </h2>
+                    
+                    <form asp-action="UpdateProfile" method="post" enctype="multipart/form-data">
+                        <div asp-validation-summary="ModelOnly" class="alert alert-danger" role="alert"></div>
+                        
+                        <div class="row mb-4">
+                            <div class="col-md-6">
+                                <div class="form-group mb-3">
+                                    <label asp-for="CompanyName" class="form-label">
+                                        <i class="fas fa-building me-1"></i>Company Name
+                                    </label>
+                                    <input asp-for="CompanyName" class="form-control" />
+                                    <span asp-validation-for="CompanyName" class="text-danger"></span>
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <div class="form-group mb-3">
+                                    <label asp-for="LicenseNumber" class="form-label">
+                                        <i class="fas fa-id-card me-1"></i>License Number
+                                    </label>
+                                    <input asp-for="LicenseNumber" class="form-control" />
+                                    <span asp-validation-for="LicenseNumber" class="text-danger"></span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row mb-4">
+                            <div class="col-md-6">
+                                <div class="form-group mb-3">
+                                    <label asp-for="PhoneNumber" class="form-label">
+                                        <i class="fas fa-phone me-1"></i>Phone Number
+                                    </label>
+                                    <input asp-for="PhoneNumber" class="form-control" />
+                                    <span asp-validation-for="PhoneNumber" class="text-danger"></span>
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <div class="form-group mb-3">
+                                    <label asp-for="TruckTypeId" class="form-label">
+                                        <i class="fas fa-truck me-1"></i>Truck Type
+                                    </label>
+                                    <select asp-for="TruckTypeId" class="form-select">
+                                        @foreach (var truckType in ViewBag.TruckTypes)
+                                        {
+                                            <option value="@truckType.Id">
+                                                @truckType.Name - @truckType.Description
+                                            </option>
+                                        }
+                                    </select>
+                                    <span asp-validation-for="TruckTypeId" class="text-danger"></span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row mb-4">
+                            <div class="col-md-6">
+                                <div class="form-group mb-3">
+                                    <label asp-for="ProfileImage" class="form-label">
+                                        <i class="fas fa-user-circle me-1"></i>Profile Image
+                                    </label>
+                                    <input asp-for="ProfileImage" type="file" class="form-control" 
+                                           accept="image/*" onchange="previewImage(this, 'profilePreview')" />
+                                    @if (!string.IsNullOrEmpty(ViewBag.CurrentProfileImage))
+                                    {
+                                        <img id="profilePreview" src="@ViewBag.CurrentProfileImage" 
+                                             class="img-thumbnail mt-2" style="height: 100px;" />
+                                    }
+                                    else
+                                    {
+                                        <img id="profilePreview" src="#" class="img-thumbnail mt-2" 
+                                             style="height: 100px; display: none;" />
+                                    }
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <div class="form-group mb-3">
+                                    <label asp-for="TruckImage" class="form-label">
+                                        <i class="fas fa-truck me-1"></i>Truck Image
+                                    </label>
+                                    <input asp-for="TruckImage" type="file" class="form-control" 
+                                           accept="image/*" onchange="previewImage(this, 'truckPreview')" />
+                                    @if (!string.IsNullOrEmpty(ViewBag.CurrentTruckImage))
+                                    {
+                                        <img id="truckPreview" src="@ViewBag.CurrentTruckImage" 
+                                             class="img-thumbnail mt-2" style="height: 100px;" />
+                                    }
+                                    else
+                                    {
+                                        <img id="truckPreview" src="#" class="img-thumbnail mt-2" 
+                                             style="height: 100px; display: none;" />
+                                    }
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-group mb-4">
+                            <label asp-for="Description" class="form-label">
+                                <i class="fas fa-info-circle me-1"></i>Description
+                            </label>
+                            <textarea asp-for="Description" class="form-control" rows="3" 
+                                    placeholder="Tell customers about your services..."></textarea>
+                            <span asp-validation-for="Description" class="text-danger"></span>
+                        </div>
+
+                        <div class="form-group mb-4">
+                            <label asp-for="ServiceAreaIds" class="form-label">
+                                <i class="fas fa-map-marked-alt me-1"></i>Service Areas
+                            </label>
+                            <div class="row">
+                                @foreach (var location in ViewBag.Locations)
+                                {
+                                    <div class="col-md-4 mb-2">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" 
+                                                   name="ServiceAreaIds" value="@location.Id" 
+                                                   id="location_@location.Id"
+                                                   @(ViewBag.SelectedAreas?.Contains(location.Id) == true ? "checked" : "")>
+                                            <label class="form-check-label" for="location_@location.Id">
+                                                @location.FullAddress
+                                            </label>
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+                            <span asp-validation-for="ServiceAreaIds" class="text-danger"></span>
+                        </div>
+
+                        <div class="text-center">
+                            <a asp-action="Profile" asp-route-id="@User.Identity.Name" class="btn btn-secondary me-2">
+                                <i class="fas fa-times me-2"></i>Cancel
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save me-2"></i>Save Changes
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+    <script>
+        function previewImage(input, previewId) {
+            var preview = document.getElementById(previewId);
+            if (input.files && input.files[0]) {
+                var reader = new FileReader();
+                reader.onload = function(e) {
+                    preview.src = e.target.result;
+                    preview.style.display = 'block';
+                }
+                reader.readAsDataURL(input.files[0]);
+            }
+        }
+    </script>
+} 

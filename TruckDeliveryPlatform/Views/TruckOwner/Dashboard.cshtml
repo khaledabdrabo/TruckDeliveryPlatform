@@ -1,0 +1,237 @@
+@using Microsoft.EntityFrameworkCore
+@using TruckDeliveryPlatform.Data
+@using TruckDeliveryPlatform.Helpers
+@using TruckDeliveryPlatform.Services
+@using Microsoft.AspNetCore.Identity
+@using Microsoft.AspNetCore.Http
+@model PaginatedList<Job>
+@inject ApplicationDbContext Context
+@inject UserManager<ApplicationUser> UserManager
+@inject IHttpContextAccessor HttpContextAccessor
+
+@{
+    var currentUser = await UserManager.GetUserAsync(User);
+    var profile = await Context.TruckOwnerProfiles
+        .FirstOrDefaultAsync(p => p.UserId == currentUser.Id);
+
+    // Get all jobs the truck owner has bid on
+    var myBids = await Context.Bids
+        .Include(b => b.Job)
+        .Where(b => b.TruckOwnerId == currentUser.Id && !b.IsDeleted)
+        .OrderByDescending(b => b.CreatedAt)
+        .ToListAsync();
+
+    if (profile == null)
+    {
+        <div class="container py-4">
+            <div class="alert alert-warning">
+                <h4 class="alert-heading">Profile Not Complete</h4>
+                <p>Please complete your profile to view available jobs.</p>
+                <hr>
+                <p class="mb-0">
+                    <a asp-action="CreateProfile" class="btn btn-primary">
+                        <i class="fas fa-user-edit me-2"></i>Complete Profile
+                    </a>
+                </p>
+            </div>
+        </div>
+        return;
+    }
+
+    // Get the active tab from query string or default to "mybids"
+    var activeTab = HttpContextAccessor.HttpContext.Request.Query["tab"].ToString() ?? "mybids";
+}
+
+<div class="container py-4">
+    <ul class="nav nav-tabs mb-4">
+        <li class="nav-item">
+            <a class="nav-link @(activeTab == "mybids" ? "active" : "")" 
+               href="@Url.Action("Dashboard", new { tab = "mybids" })">
+                <i class="fas fa-list-alt me-2"></i>My Bids
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link @(activeTab == "available" ? "active" : "")" 
+               href="@Url.Action("Dashboard", new { tab = "available" })">
+                <i class="fas fa-search me-2"></i>Available Jobs
+            </a>
+        </li>
+    </ul>
+
+    @if (activeTab == "mybids")
+    {
+        <div class="mb-5">
+            <h2 class="mb-4">My Bids</h2>
+            @if (myBids.Any())
+            {
+                <div class="row">
+                    @foreach (var bid in myBids)
+                    {
+                        var statusClass = bid.Status switch
+                        {
+                            BidStatus.Accepted => "success",
+                            BidStatus.Rejected => "danger",
+                            BidStatus.Withdrawn => "warning",
+                            _ => "info"
+                        };
+
+                        <div class="col-md-6 mb-4">
+                            <div class="card h-100 border-@statusClass">
+                                <div class="card-header bg-@statusClass bg-opacity-10">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <h5 class="card-title mb-0">@bid.Job.PickupLocation → @bid.Job.DropoffLocation</h5>
+                                        <span class="badge bg-@statusClass">@bid.Status</span>
+                                    </div>
+                                </div>
+                                <div class="card-body">
+                                    <div class="mb-3">
+                                        <div><strong>Your Bid:</strong> @((int)bid.BidAmount) EGP</div>
+                                        <div><strong>Customer's Budget:</strong> @((int)bid.Job.EstimatedCost) EGP</div>
+                                        <div><strong>Delivery By:</strong> @bid.EstimatedDeliveryTime.ToString("MMM dd, yyyy HH:mm")</div>
+                                        @if (!string.IsNullOrEmpty(bid.Notes))
+                                        {
+                                            <div><strong>Notes:</strong> @bid.Notes</div>
+                                        }
+                                    </div>
+                                    <div class="text-muted">
+                                        <small>
+                                            Bid placed on @bid.CreatedAt.ToString("MMM dd, yyyy HH:mm")
+                                            @if (bid.UpdatedAt.HasValue)
+                                            {
+                                                <span>(Updated: @bid.UpdatedAt.Value.ToString("MMM dd, yyyy HH:mm"))</span>
+                                            }
+                                        </small>
+                                    </div>
+                                </div>
+                                <div class="card-footer bg-@statusClass bg-opacity-10">
+                                    <a asp-controller="Jobs" asp-action="Details" asp-route-id="@bid.JobId" 
+                                       class="btn btn-outline-@statusClass btn-sm">
+                                        <i class="fas fa-eye me-1"></i>View Job Details
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
+            else
+            {
+                <div class="alert alert-info">
+                    You haven't placed any bids yet.
+                </div>
+            }
+        </div>
+    }
+    else
+    {
+        <div>
+            <h2 class="mb-4">Available Jobs</h2>
+            <div class="row">
+                @foreach (var job in Model)
+                {
+                    // Skip jobs that the truck owner has already bid on
+                    if (myBids.Any(b => b.JobId == job.Id))
+                        continue;
+
+                    var distance = DistanceCalculator.CalculateDistance(
+                        await Context.Locations.FindAsync(job.PickupLocationId),
+                        await Context.Locations.FindAsync(job.DropoffLocationId));
+                        
+                    var myEstimate = profile.CalculateEstimatedPrice(distance);
+                    
+                    <div class="col-md-6 mb-4">
+                        <div class="card h-100">
+                            <div class="card-body">
+                                <h5 class="card-title">@job.PickupLocation → @job.DropoffLocation</h5>
+                                <div class="mb-3">
+                                    <small class="text-muted">Posted by @job.Customer.FirstName @job.Customer.LastName</small>
+                                </div>
+                                <div class="mb-3">
+                                    <div><strong>Goods:</strong> @job.GoodsType</div>
+                                    <div><strong>Weight:</strong> @job.Weight kg</div>
+                                    <div><strong>Size:</strong> @job.Size</div>
+                                    <div><strong>Pickup Date:</strong> @job.PreferredPickupDate.ToString("MMM dd, yyyy")</div>
+                                    <div><strong>Current Bids:</strong> @job.BidsCount</div>
+                                </div>
+                                <div class="mb-3">
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="text-muted">Customer's Est. Price:</div>
+                                            <div class="h5 text-primary">
+                                                @((int)job.EstimatedCost) EGP
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="text-muted">Your Est. Price:</div>
+                                            <div class="h5 @((int)myEstimate > (int)job.EstimatedCost ? "text-danger" : "text-success")">
+                                                @((int)myEstimate) EGP
+                                                @if ((int)myEstimate > (int)job.EstimatedCost)
+                                                {
+                                                    <small class="text-danger">
+                                                        (+@((int)(myEstimate - job.EstimatedCost)) EGP)
+                                                    </small>
+                                                }
+                                                else if ((int)myEstimate < (int)job.EstimatedCost)
+                                                {
+                                                    <small class="text-success">
+                                                        (-@((int)(job.EstimatedCost - myEstimate)) EGP)
+                                                    </small>
+                                                }
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="text-muted mt-2">
+                                        <small>
+                                            <i class="fas fa-route me-1"></i>Distance: @distance.ToString("F1") km
+                                            <span class="mx-2">|</span>
+                                            <i class="fas fa-tag me-1"></i>Your Rate: @((int)profile.PricePerKilometer) EGP/km
+                                        </small>
+                                    </div>
+                                </div>
+
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <a asp-controller="Jobs" asp-action="Details" asp-route-id="@job.Id" 
+                                       class="btn btn-primary">
+                                        View Details
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+
+            @if (!Model.Any())
+            {
+                <div class="alert alert-info mt-4">
+                    No jobs are currently available. Please check back later.
+                </div>
+            }
+
+            @{
+                var prevDisabled = !Model.HasPreviousPage ? "disabled" : "";
+                var nextDisabled = !Model.HasNextPage ? "disabled" : "";
+            }
+
+            <div class="d-flex justify-content-between align-items-center mt-4">
+                <div>
+                    Showing @((Model.PageIndex - 1) * 10 + 1) to @(Math.Min(Model.PageIndex * 10, Model.TotalItems)) of @Model.TotalItems items
+                </div>
+                <div class="btn-group">
+                    <a asp-action="Dashboard"
+                       asp-route-tab="available"
+                       asp-route-page="@(Model.PageIndex - 1)"
+                       class="btn btn-outline-primary @prevDisabled">
+                        <i class="fas fa-chevron-left"></i> Previous
+                    </a>
+                    <a asp-action="Dashboard"
+                       asp-route-tab="available"
+                       asp-route-page="@(Model.PageIndex + 1)"
+                       class="btn btn-outline-primary @nextDisabled">
+                        Next <i class="fas fa-chevron-right"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+    }
+</div> 

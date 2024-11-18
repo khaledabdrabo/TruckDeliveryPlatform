@@ -1,0 +1,31 @@
+@model Dictionary<int, int>
+@{
+    var totalRatings = Model.Values.Sum();
+    var maxRating = 5;
+}
+
+<div class="rating-distribution">
+    @for (int i = maxRating; i >= 1; i--)
+    {
+        var count = Model.ContainsKey(i) ? Model[i] : 0;
+        var percentage = totalRatings > 0 ? (count * 100.0 / totalRatings) : 0;
+        
+        <div class="d-flex align-items-center mb-2">
+            <div class="text-muted me-2" style="width: 60px;">
+                @i <i class="fas fa-star text-warning"></i>
+            </div>
+            <div class="progress flex-grow-1" style="height: 8px;">
+                <div class="progress-bar bg-warning" 
+                     role="progressbar" 
+                     style="width: @percentage%"
+                     aria-valuenow="@percentage" 
+                     aria-valuemin="0" 
+                     aria-valuemax="100">
+                </div>
+            </div>
+            <div class="text-muted ms-2" style="width: 40px;">
+                @count
+            </div>
+        </div>
+    }
+</div> 

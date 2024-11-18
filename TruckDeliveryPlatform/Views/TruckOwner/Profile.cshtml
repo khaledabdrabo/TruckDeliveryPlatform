@@ -1,0 +1,126 @@
+@model TruckOwnerProfileDetailsViewModel
+
+<div class="container py-4">
+    <div class="row">
+        <div class="col-lg-4">
+            <div class="card mb-4">
+                <div class="card-body text-center">
+                    @if (!string.IsNullOrEmpty(Model.Profile.ProfileImagePath))
+                    {
+                        <img src="@Model.Profile.ProfileImagePath" class="rounded-circle img-fluid mb-3" 
+                             style="width: 150px; height: 150px; object-fit: cover;" alt="Profile Image" />
+                    }
+                    else
+                    {
+                        <div class="rounded-circle bg-light d-flex align-items-center justify-content-center mx-auto mb-3"
+                             style="width: 150px; height: 150px;">
+                            <i class="fas fa-user fa-4x text-secondary"></i>
+                        </div>
+                    }
+                    <h4>@Model.Profile.CompanyName</h4>
+                    <div class="mb-2">
+                        <i class="fas fa-star text-warning"></i>
+                        <span class="h5">@Model.Profile.AverageRating.ToString("F1")</span>
+                        <span class="text-muted">(@Model.Profile.TotalRatings reviews)</span>
+                    </div>
+                    <p class="text-muted mb-4">@Model.Profile.Description</p>
+                    
+                    @if (User.Identity.Name == Model.Profile.User.UserName)
+                    {
+                        <a asp-action="EditProfile" class="btn btn-primary">
+                            <i class="fas fa-edit me-2"></i>Edit Profile
+                        </a>
+                    }
+                </div>
+            </div>
+
+            <div class="card mb-4">
+                <div class="card-body">
+                    <h5 class="card-title">Contact Information</h5>
+                    <div class="mb-3">
+                        <i class="fas fa-phone me-2"></i>
+                        @Model.Profile.PhoneNumber
+                    </div>
+                    <div class="mb-3">
+                        <i class="fas fa-envelope me-2"></i>
+                        @Model.Profile.User.Email
+                    </div>
+                    <div class="mb-3">
+                        <i class="fas fa-id-card me-2"></i>
+                        License: @Model.Profile.LicenseNumber
+                    </div>
+                </div>
+            </div>
+
+            <div class="card mb-4">
+                <div class="card-body">
+                    <h5 class="card-title">Truck Information</h5>
+                    @if (!string.IsNullOrEmpty(Model.Profile.TruckImagePath))
+                    {
+                        <img src="@Model.Profile.TruckImagePath" class="img-fluid rounded mb-3" alt="Truck Image" />
+                    }
+                    <div class="mb-3">
+                        <i class="fas @Model.Profile.TruckType.Icon me-2"></i>
+                        @Model.Profile.TruckType.Name
+                    </div>
+                    <div class="text-muted">
+                        Capacity: @Model.Profile.TruckType.MinimumWeight - @Model.Profile.TruckType.MaximumWeight kg
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-8">
+            <div class="card mb-4">
+                <div class="card-body">
+                    <h5 class="card-title">Performance Statistics</h5>
+                    <div class="row text-center">
+                        <div class="col-md-4 mb-3">
+                            <div class="h2">@Model.TotalCompletedJobs</div>
+                            <div class="text-muted">Completed Jobs</div>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <div class="h2">@Model.CompletionRate.ToString("F0")%</div>
+                            <div class="text-muted">Completion Rate</div>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <div class="h2">@Model.AverageResponseTime.ToString("F1")h</div>
+                            <div class="text-muted">Avg. Response Time</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card mb-4">
+                <div class="card-body">
+                    <h5 class="card-title">Rating Distribution</h5>
+                    @await Html.PartialAsync("_RatingDistribution", Model.RatingDistribution)
+                </div>
+            </div>
+
+            <div class="card mb-4">
+                <div class="card-body">
+                    <h5 class="card-title">Recent Reviews</h5>
+                    @await Html.PartialAsync("_ReviewsList", Model.RecentRatings)
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Service Areas</h5>
+                    <div class="row">
+                        @foreach (var area in Model.Profile.ServiceAreas.OrderBy(a => a.State).ThenBy(a => a.City))
+                        {
+                            <div class="col-md-4 mb-2">
+                                <div class="d-flex align-items-center">
+                                    <i class="fas fa-map-marker-alt me-2 text-primary"></i>
+                                    @area.FullAddress
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div> 

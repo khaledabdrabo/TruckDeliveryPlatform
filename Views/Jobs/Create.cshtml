@@ -1,0 +1,89 @@
+@model JobViewModel
+
+<div class="container">
+    <h2>Post a New Job</h2>
+    
+    <form asp-action="Create" method="post">
+        <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+        
+        <div class="form-group">
+            <label asp-for="PickupLocation">Pickup Location</label>
+            <input asp-for="PickupLocation" class="form-control" id="pickupLocation" />
+            <span asp-validation-for="PickupLocation" class="text-danger"></span>
+        </div>
+
+        <div class="form-group">
+            <label asp-for="DropoffLocation">Drop-off Location</label>
+            <input asp-for="DropoffLocation" class="form-control" id="dropoffLocation" />
+            <span asp-validation-for="DropoffLocation" class="text-danger"></span>
+        </div>
+
+        <div class="form-group">
+            <label asp-for="GoodsType">Type of Goods</label>
+            <select asp-for="GoodsType" class="form-control">
+                <option value="">Select type...</option>
+                <option value="Furniture">Furniture</option>
+                <option value="Electronics">Electronics</option>
+                <option value="Appliances">Appliances</option>
+                <option value="Other">Other</option>
+            </select>
+            <span asp-validation-for="GoodsType" class="text-danger"></span>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group col-md-4">
+                <label asp-for="Quantity">Quantity</label>
+                <input asp-for="Quantity" class="form-control" type="number" />
+                <span asp-validation-for="Quantity" class="text-danger"></span>
+            </div>
+            
+            <div class="form-group col-md-4">
+                <label asp-for="Weight">Weight (kg)</label>
+                <input asp-for="Weight" class="form-control" type="number" step="0.1" />
+                <span asp-validation-for="Weight" class="text-danger"></span>
+            </div>
+            
+            <div class="form-group col-md-4">
+                <label asp-for="Size">Size</label>
+                <input asp-for="Size" class="form-control" />
+                <span asp-validation-for="Size" class="text-danger"></span>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label asp-for="PreferredPickupDate">Preferred Pickup Date & Time</label>
+            <input asp-for="PreferredPickupDate" class="form-control" type="datetime-local" />
+            <span asp-validation-for="PreferredPickupDate" class="text-danger"></span>
+        </div>
+
+        <div class="form-group">
+            <label asp-for="SpecialInstructions">Special Instructions</label>
+            <textarea asp-for="SpecialInstructions" class="form-control" rows="3"></textarea>
+            <span asp-validation-for="SpecialInstructions" class="text-danger"></span>
+        </div>
+
+        <div class="form-group">
+            <div id="map" style="height: 400px;"></div>
+        </div>
+
+        <div class="form-group">
+            <label>Estimated Distance: </label>
+            <span id="estimatedDistance">0 km</span>
+            <input asp-for="EstimatedDistance" type="hidden" />
+        </div>
+
+        <div class="form-group">
+            <label>Estimated Cost: </label>
+            <span id="estimatedCost">$0</span>
+            <input asp-for="EstimatedCost" type="hidden" />
+        </div>
+
+        <button type="submit" class="btn btn-primary">Post Job</button>
+    </form>
+</div>
+
+@section Scripts {
+    <script src="https://maps.googleapis.com/maps/api/js?key=YOUR_API_KEY&libraries=places"></script>
+    <script src="~/js/jobCreate.js"></script>
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+} 

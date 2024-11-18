@@ -1,0 +1,186 @@
+@model AdminDashboardViewModel
+
+<div class="container-fluid py-4">
+    <h1 class="mb-4">Admin Dashboard</h1>
+
+    <div class="row g-4 mb-4">
+        <div class="col-md-3">
+            <div class="card bg-primary text-white">
+                <div class="card-body">
+                    <h5 class="card-title">Total Customers</h5>
+                    <p class="card-text display-6">@Model.TotalCustomers.Count</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-success text-white">
+                <div class="card-body">
+                    <h5 class="card-title">Total Truck Owners</h5>
+                    <p class="card-text display-6">@Model.TotalTruckOwners.Count</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-info text-white">
+                <div class="card-body">
+                    <h5 class="card-title">Active Jobs</h5>
+                    <p class="card-text display-6">@Model.ActiveJobs</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-warning text-white">
+                <div class="card-body">
+                    <h5 class="card-title">Total Bids</h5>
+                    <p class="card-text display-6">@Model.TotalBids</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Recent Jobs</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Customer</th>
+                                    <th>Route</th>
+                                    <th>Status</th>
+                                    <th>Created</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var job in Model.RecentJobs)
+                                {
+                                    <tr>
+                                        <td>@job.Customer.FirstName @job.Customer.LastName</td>
+                                        <td>@job.PickupLocation → @job.DropoffLocation</td>
+                                        <td>
+                                            <span class="badge bg-@(job.Status switch {
+                                                JobStatus.Active => "primary",
+                                                JobStatus.Completed => "success",
+                                                JobStatus.Canceled => "danger",
+                                                _ => "secondary"
+                                            })">@job.Status</span>
+                                        </td>
+                                        <td>@job.CreatedAt.ToString("MMM dd, yyyy")</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Recent Truck Owners</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Company</th>
+                                    <th>Rating</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var profile in Model.RecentTruckOwners)
+                                {
+                                    <tr>
+                                        <td>@profile.User.FirstName @profile.User.LastName</td>
+                                        <td>@profile.CompanyName</td>
+                                        <td>@profile.AverageRating.ToString("F1")</td>
+                                        <td>
+                                            <span class="badge bg-@(profile.IsActive ? "success" : "danger")">
+                                                @(profile.IsActive ? "Active" : "Inactive")
+                                            </span>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">System Configuration</h5>
+                </div>
+                <div class="card-body">
+                    <form asp-action="UpdateSystemConfig" method="post">
+                        <div class="mb-3">
+                            <label class="form-label">Price per Kilometer</label>
+                            <div class="input-group">
+                                <input type="number" name="PricePerKilometer" class="form-control" 
+                                       value="@Model.SystemConfig.PricePerKilometer" step="0.01" min="0" />
+                                <span class="input-group-text">EGP</span>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Base Fee</label>
+                            <div class="input-group">
+                                <input type="number" name="BaseFee" class="form-control" 
+                                       value="@Model.SystemConfig.BaseFee" step="0.01" min="0" />
+                                <span class="input-group-text">EGP</span>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Update Configuration</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Statistics</h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <strong>Jobs by Status:</strong>
+                        <div class="mt-2">
+                            @foreach (var status in Model.JobsByStatus)
+                            {
+                                <div class="mb-2">
+                                    <div class="d-flex justify-content-between">
+                                        <span>@status.Key</span>
+                                        <span>@status.Value</span>
+                                    </div>
+                                    <div class="progress">
+                                        <div class="progress-bar bg-@(status.Key switch {
+                                            JobStatus.Active => "primary",
+                                            JobStatus.Completed => "success",
+                                            JobStatus.Canceled => "danger",
+                                            _ => "secondary"
+                                        })" style="width: @(status.Value * 100 / Model.TotalJobs)%"></div>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                    <div>
+                        <strong>Average Bids per Job:</strong>
+                        <p class="h4">@Model.AverageBidsPerJob.ToString("F1")</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div> 

@@ -1,0 +1,64 @@
+@model IEnumerable<Job>
+
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>My Dashboard</h2>
+        <a asp-controller="Jobs" asp-action="Create" class="btn btn-primary">
+            <i class="fas fa-plus-circle me-2"></i>Post New Job
+        </a>
+    </div>
+
+    <div class="row">
+        <div class="col-md-12 mb-4">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title mb-3">Recent Jobs</h5>
+                    @if (!Model.Any())
+                    {
+                        <p class="text-muted">You haven't posted any jobs yet.</p>
+                    }
+                    else
+                    {
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Route</th>
+                                        <th>Status</th>
+                                        <th>Pickup Date</th>
+                                        <th>Bids</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var job in Model)
+                                    {
+                                        <tr>
+                                            <td>@job.PickupLocation → @job.DropoffLocation</td>
+                                            <td>
+                                                <span class="badge bg-@(job.Status switch {
+                                                    JobStatus.Active => "primary",
+                                                    JobStatus.InProgress => "info",
+                                                    JobStatus.Completed => "success",
+                                                    _ => "secondary"
+                                                })">@job.Status</span>
+                                            </td>
+                                            <td>@job.PreferredPickupDate.ToString("MMM dd, yyyy")</td>
+                                            <td>@job.BidsCount bids</td>
+                                            <td>
+                                                <a asp-controller="Jobs" asp-action="Details" asp-route-id="@job.Id" 
+                                                   class="btn btn-sm btn-outline-primary">
+                                                    View Details
+                                                </a>
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div> 
