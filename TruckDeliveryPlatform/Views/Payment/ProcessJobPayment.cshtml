@@ -1,0 +1,136 @@
+@model ProcessPaymentViewModel
+
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-body">
+                    <h2 class="card-title text-center mb-4">Process Payment</h2>
+
+                    <div class="alert alert-info">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <strong>Total Amount:</strong><br />
+                                @((int)Model.Amount) EGP
+                            </div>
+                            <div class="col-md-6">
+                                <strong>Reference Number:</strong><br />
+                                @Model.ReferenceNumber
+                            </div>
+                        </div>
+                    </div>
+
+                    <form asp-action="ProcessJobPayment" method="post">
+                        <input type="hidden" asp-for="JobId" />
+                        <input type="hidden" asp-for="Amount" />
+                        <input type="hidden" asp-for="ReferenceNumber" />
+
+                        <div class="mb-4">
+                            <label class="form-label">Select Payment Method</label>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-check card p-3">
+                                        <input class="form-check-input" type="radio" asp-for="PaymentMethod" 
+                                               value="@PaymentMethod.BankTransfer" id="bankTransfer" checked>
+                                        <label class="form-check-label" for="bankTransfer">
+                                            <i class="fas fa-university me-2"></i>Bank Transfer
+                                        </label>
+                                        <div class="mt-2 small text-muted">
+                                            Transfer to our bank account
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-check card p-3">
+                                        <input class="form-check-input" type="radio" asp-for="PaymentMethod" 
+                                               value="@PaymentMethod.VodafoneCash" id="vodafoneCash">
+                                        <label class="form-check-label" for="vodafoneCash">
+                                            <i class="fas fa-mobile-alt me-2"></i>Vodafone Cash
+                                        </label>
+                                        <div class="mt-2 small text-muted">
+                                            Pay using Vodafone Cash
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-4">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label asp-for="WalletOwnerName" class="form-label">Wallet Owner Name</label>
+                                        <input asp-for="WalletOwnerName" class="form-control" />
+                                        <span asp-validation-for="WalletOwnerName" class="text-danger"></span>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label asp-for="WalletNumber" class="form-label">Wallet Number</label>
+                                        <input asp-for="WalletNumber" class="form-control" />
+                                        <span asp-validation-for="WalletNumber" class="text-danger"></span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div id="bankDetails" class="payment-details mb-4">
+                            <div class="alert alert-secondary">
+                                <h6><i class="fas fa-university me-2"></i>Bank Transfer Details</h6>
+                                <p class="mb-2">Please transfer to:</p>
+                                <ul class="list-unstyled">
+                                    <li><strong>Bank Name:</strong> @Model.BankName</li>
+                                    <li><strong>Account Name:</strong> @Model.AccountName</li>
+                                    <li><strong>Account Number:</strong> @Model.AccountNumber</li>
+                                    <li><strong>Amount:</strong> @((int)Model.Amount) EGP</li>
+                                    <li><strong>Reference:</strong> @Model.ReferenceNumber</li>
+                                </ul>
+                            </div>
+                        </div>
+
+                        <div id="vodafoneDetails" class="payment-details mb-4" style="display: none;">
+                            <div class="alert alert-secondary">
+                                <h6><i class="fas fa-mobile-alt me-2"></i>Vodafone Cash Details</h6>
+                                <p class="mb-2">Please send to:</p>
+                                <ul class="list-unstyled">
+                                    <li><strong>Wallet Owner:</strong> <span id="displayWalletOwner">@Model.WalletOwnerName</span></li>
+                                    <li><strong>Wallet Number:</strong> <span id="displayWalletNumber">@Model.WalletNumber</span></li>
+                                    <li><strong>Amount:</strong> @((int)Model.Amount) EGP</li>
+                                    <li><strong>Reference:</strong> @Model.ReferenceNumber</li>
+                                </ul>
+                            </div>
+                        </div>
+
+                        <div class="text-center">
+                            <button type="submit" class="btn btn-primary btn-lg">
+                                <i class="fas fa-check-circle me-2"></i>Confirm Payment
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        $(function() {
+            $('input[name="PaymentMethod"]').change(function() {
+                $('.payment-details').hide();
+                if (this.value === '@PaymentMethod.BankTransfer') {
+                    $('#bankDetails').show();
+                } else {
+                    $('#vodafoneDetails').show();
+                }
+            });
+
+            $('#WalletOwnerName').on('input', function() {
+                $('#displayWalletOwner').text($(this).val());
+            });
+            $('#WalletNumber').on('input', function() {
+                $('#displayWalletNumber').text($(this).val());
+            });
+        });
+    </script>
+} 

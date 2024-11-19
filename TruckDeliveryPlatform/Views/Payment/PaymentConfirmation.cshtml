@@ -1,0 +1,98 @@
+@model Transaction
+
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-body text-center">
+                    @if (Model.Status == TransactionStatus.Completed)
+                    {
+                        <div class="mb-4">
+                            <i class="fas fa-check-circle text-success" style="font-size: 4rem;"></i>
+                        </div>
+                        <h2 class="card-title mb-4">Payment Successful!</h2>
+                    }
+                    else if (Model.Status == TransactionStatus.Pending)
+                    {
+                        <div class="mb-4">
+                            <i class="fas fa-clock text-warning" style="font-size: 4rem;"></i>
+                        </div>
+                        <h2 class="card-title mb-4">Payment Pending</h2>
+                    }
+                    else
+                    {
+                        <div class="mb-4">
+                            <i class="fas fa-times-circle text-danger" style="font-size: 4rem;"></i>
+                        </div>
+                        <h2 class="card-title mb-4">Payment Failed</h2>
+                    }
+
+                    <div class="alert alert-info mb-4">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <strong>Reference Number:</strong><br />
+                                @Model.ReferenceNumber
+                            </div>
+                            <div class="col-md-6">
+                                <strong>Amount:</strong><br />
+                                @((int)Model.Amount) EGP
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="payment-details mb-4">
+                        @if (Model.PaymentMethod == PaymentMethod.BankTransfer)
+                        {
+                            <div class="alert alert-secondary">
+                                <h6><i class="fas fa-university me-2"></i>Bank Transfer Details</h6>
+                                <p class="mb-2">Please transfer to:</p>
+                                <ul class="list-unstyled">
+                                    <li><strong>Bank Name:</strong> Example Bank</li>
+                                    <li><strong>Account Name:</strong> Truck Delivery Platform</li>
+                                    <li><strong>Account Number:</strong> 1234567890</li>
+                                    <li><strong>Reference:</strong> @Model.ReferenceNumber</li>
+                                </ul>
+                            </div>
+                        }
+                        else if (Model.PaymentMethod == PaymentMethod.VodafoneCash)
+                        {
+                            <div class="alert alert-secondary">
+                                <h6><i class="fas fa-mobile-alt me-2"></i>Vodafone Cash Details</h6>
+                                <p class="mb-2">Please send to:</p>
+                                <ul class="list-unstyled">
+                                    <li><strong>Wallet Number:</strong> 01234567890</li>
+                                    <li><strong>Reference:</strong> @Model.ReferenceNumber</li>
+                                </ul>
+                            </div>
+                        }
+                    </div>
+
+                    @if (Model.Status == TransactionStatus.Pending)
+                    {
+                        <div class="alert alert-warning mb-4">
+                            <h6><i class="fas fa-info-circle me-2"></i>Next Steps</h6>
+                            <p class="mb-0">
+                                Please complete your payment using the details above. Once we confirm your payment,
+                                your job will be automatically updated and the truck owner will be notified.
+                            </p>
+                        </div>
+
+                        <form asp-action="VerifyPayment" method="post" class="mb-3">
+                            <input type="hidden" name="referenceNumber" value="@Model.ReferenceNumber" />
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-sync-alt me-2"></i>Check Payment Status
+                            </button>
+                        </form>
+                    }
+
+                    <div class="mt-4">
+                        <a asp-controller="Jobs" asp-action="Details" asp-route-id="@Model.JobId" 
+                           class="btn btn-outline-primary">
+                            <i class="fas fa-arrow-left me-2"></i>Back to Job Details
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div> 

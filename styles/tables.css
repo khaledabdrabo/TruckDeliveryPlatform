@@ -1,0 +1,10 @@
+/* RTL-aware table styles */
+[dir="rtl"] table {
+  text-align: right;
+}
+
+[dir="rtl"] .table-cell-start {
+  text-align: right;
+  padding-right: 0;
+  padding-left: 1rem;
+} 

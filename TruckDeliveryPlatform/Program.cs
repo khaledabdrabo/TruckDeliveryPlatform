@@ -3,9 +3,39 @@ using Microsoft.EntityFrameworkCore;
 using TruckDeliveryPlatform.Data;
 using TruckDeliveryPlatform.Models;
 using TruckDeliveryPlatform.Services;
-using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Localization;
+using System.Globalization;
+using Microsoft.Extensions.Options;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Add localization services
+builder.Services.AddLocalization(options => options.ResourcesPath = "Resources");
+
+// Register SharedResource
+builder.Services.AddSingleton<SharedResource>();
+
+// Add MVC with localization
+builder.Services.AddControllersWithViews()
+    .AddViewLocalization(Microsoft.AspNetCore.Mvc.Razor.LanguageViewLocationExpanderFormat.Suffix)
+    .AddDataAnnotationsLocalization(options => {
+        options.DataAnnotationLocalizerProvider = (type, factory) =>
+            factory.Create(typeof(SharedResource));
+    });
+
+// Configure supported cultures
+builder.Services.Configure<RequestLocalizationOptions>(options =>
+{
+    var supportedCultures = new[]
+    {
+        new CultureInfo("en"),
+        new CultureInfo("ar")
+    };
+
+    options.DefaultRequestCulture = new RequestCulture("en");
+    options.SupportedCultures = supportedCultures;
+    options.SupportedUICultures = supportedCultures;
+});
 
 // Add services to the container.
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
@@ -29,7 +59,6 @@ builder.Services.AddDefaultIdentity<ApplicationUser>(options => {
 // Register ImageService
 builder.Services.AddScoped<ImageService>();
     
-builder.Services.AddControllersWithViews();
 builder.Services.AddRazorPages();
 
 // Configure cookie settings
@@ -44,6 +73,10 @@ builder.Services.ConfigureApplicationCookie(options =>
 builder.Services.AddHttpContextAccessor();
 
 var app = builder.Build();
+
+// Configure localization middleware
+var localizationOptions = app.Services.GetRequiredService<IOptions<RequestLocalizationOptions>>();
+app.UseRequestLocalization(localizationOptions.Value);
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())

@@ -9,6 +9,8 @@ using TruckDeliveryPlatform.Services;
 using TruckDeliveryPlatform.Models.ViewModels;
 using System.IO;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Localization;
+using System.Security.Claims;
 
 namespace TruckDeliveryPlatform.Controllers
 {
@@ -116,15 +118,6 @@ namespace TruckDeliveryPlatform.Controllers
             {
                 try
                 {
-                    // Create uploads directories if they don't exist
-                    var uploadsPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads");
-                    var profilesPath = Path.Combine(uploadsPath, "profiles");
-                    var trucksPath = Path.Combine(uploadsPath, "trucks");
-
-                    Directory.CreateDirectory(uploadsPath);
-                    Directory.CreateDirectory(profilesPath);
-                    Directory.CreateDirectory(trucksPath);
-
                     var user = await _userManager.GetUserAsync(User);
                     
                     // Check if profile already exists
@@ -134,18 +127,6 @@ namespace TruckDeliveryPlatform.Controllers
                     if (existingProfile != null)
                     {
                         ModelState.AddModelError("", "Profile already exists");
-                        return View(model);
-                    }
-
-                    // Validate that at least one service area is selected
-                    if (model.ServiceAreaIds == null || !model.ServiceAreaIds.Any())
-                    {
-                        ModelState.AddModelError("ServiceAreaIds", "Please select at least one service area");
-                        ViewBag.TruckTypes = await _context.TruckTypes.OrderBy(t => t.Name).ToListAsync();
-                        ViewBag.Locations = await _context.Locations
-                            .OrderBy(l => l.State)
-                            .ThenBy(l => l.City)
-                            .ToListAsync();
                         return View(model);
                     }
 
@@ -163,6 +144,7 @@ namespace TruckDeliveryPlatform.Controllers
                         TruckTypeId = model.TruckTypeId,
                         Description = model.Description,
                         PricePerKilometer = model.PricePerKilometer,
+                        WaitingHourPrice = model.WaitingHourPrice,
                         ServiceAreas = selectedAreas,
                         AverageRating = 0,
                         TotalRatings = 0
@@ -185,23 +167,15 @@ namespace TruckDeliveryPlatform.Controllers
                     _context.TruckOwnerProfiles.Add(profile);
                     await _context.SaveChangesAsync();
 
-                    // Clear any cached data
-                    await _context.Entry(profile).ReloadAsync();
+                    // Log the saved values for debugging
+                    _logger.LogInformation($"Profile created - WaitingHourPrice: {profile.WaitingHourPrice}");
 
-                    // Redirect to Dashboard with a fresh request
-                    return RedirectToAction("Dashboard", "TruckOwner", null);
+                    return RedirectToAction("Dashboard");
                 }
                 catch (Exception ex)
                 {
-                    // Log the inner exception if it exists
-                    if (ex.InnerException != null)
-                    {
-                        ModelState.AddModelError("", $"Error saving profile: {ex.InnerException.Message}");
-                    }
-                    else
-                    {
-                        ModelState.AddModelError("", $"Error saving profile: {ex.Message}");
-                    }
+                    _logger.LogError($"Error creating profile: {ex.Message}");
+                    ModelState.AddModelError("", $"Error saving profile: {ex.Message}");
                 }
             }
 
@@ -217,46 +191,36 @@ namespace TruckDeliveryPlatform.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> PlaceBid(PlaceBidViewModel model)
+        public async Task<IActionResult> PlaceBid(int jobId, decimal bidAmount, DateTime estimatedDeliveryTime, string notes)
         {
-            if (ModelState.IsValid)
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var profile = await _context.TruckOwnerProfiles
+                .FirstOrDefaultAsync(p => p.UserId == userId);
+
+            if (profile == null)
+                return RedirectToAction("CreateProfile");
+
+            var job = await _context.Jobs.FindAsync(jobId);
+            if (job == null)
+                return NotFound();
+
+            var bid = new Bid
             {
-                var user = await _userManager.GetUserAsync(User);
-                
-                // Check for existing bid
-                var existingBid = await _context.Bids
-                    .FirstOrDefaultAsync(b => 
-                        b.JobId == model.JobId && 
-                        b.TruckOwnerId == user.Id && 
-                        !b.IsDeleted);
+                JobId = jobId,
+                TruckOwnerId = userId,
+                BidAmount = bidAmount,
+                WaitingHourPrice = profile.WaitingHourPrice,
+                EstimatedDeliveryTime = estimatedDeliveryTime,
+                Notes = notes,
+                Status = BidStatus.Pending,
+                CreatedAt = DateTime.UtcNow
+            };
 
-                if (existingBid != null)
-                {
-                    // Soft delete the existing bid
-                    existingBid.IsDeleted = true;
-                    existingBid.DeletedAt = DateTime.UtcNow;
-                    existingBid.Status = BidStatus.Withdrawn;
-                }
+            _context.Bids.Add(bid);
+            await _context.SaveChangesAsync();
 
-                // Create new bid
-                var bid = new Bid
-                {
-                    JobId = model.JobId,
-                    TruckOwnerId = user.Id,
-                    BidAmount = model.BidAmount,
-                    EstimatedDeliveryTime = model.EstimatedDeliveryTime,
-                    Notes = model.Notes,
-                    Status = BidStatus.Pending,
-                    CreatedAt = DateTime.UtcNow
-                };
-
-                _context.Bids.Add(bid);
-                await _context.SaveChangesAsync();
-
-                return RedirectToAction("Details", "Jobs", new { id = model.JobId });
-            }
-
-            return RedirectToAction("Details", "Jobs", new { id = model.JobId });
+            TempData["Message"] = "Bid placed successfully";
+            return RedirectToAction("Details", "Jobs", new { id = jobId });
         }
 
         public async Task<IActionResult> Profile(string id)

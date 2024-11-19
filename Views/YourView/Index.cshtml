@@ -1,0 +1,10 @@
+@model DeliveryModel
+
+<div class="form-group">
+    @Html.LabelFor(m => m.DeliveryDate)
+    @Html.TextBoxFor(m => m.DeliveryDate, "{0:dd/MM/yyyy}", new { @class = "form-control" })
+</div>
+
+<div>
+    @Model.Price.ToString("N2", new CultureInfo("ar-SA"))
+</div> 

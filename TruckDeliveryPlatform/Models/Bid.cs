@@ -25,8 +25,17 @@ namespace TruckDeliveryPlatform.Models
         public bool IsDeleted { get; set; }
         public DateTime? DeletedAt { get; set; }
 
+        public decimal WaitingHourPrice { get; set; }
+        public decimal TotalWaitingPrice => WaitingHourPrice * Job.EstimatedWaitingHours;
+        public decimal TotalBidAmount => BidAmount + TotalWaitingPrice;
+
         public virtual Job Job { get; set; }
         public virtual ApplicationUser TruckOwner { get; set; }
+
+        public void InitializeFromTruckOwnerProfile(TruckOwnerProfile profile)
+        {
+            WaitingHourPrice = profile.WaitingHourPrice;
+        }
     }
 
     public enum BidStatus

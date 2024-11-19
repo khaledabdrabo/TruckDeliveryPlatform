@@ -41,5 +41,10 @@ namespace TruckDeliveryPlatform.Models.ViewModels
         [Required]
         [Display(Name = "Truck Type")]
         public int TruckTypeId { get; set; }
+
+        [Display(Name = "Estimated Waiting Hours")]
+        [Required(ErrorMessage = "Please enter estimated waiting hours")]
+        [Range(0, 24, ErrorMessage = "Waiting hours must be between 0 and 24")]
+        public decimal EstimatedWaitingHours { get; set; }
     }
 } 

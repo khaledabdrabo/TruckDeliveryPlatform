@@ -38,5 +38,10 @@ namespace TruckDeliveryPlatform.Models.ViewModels
         [Display(Name = "Price per Kilometer (EGP)")]
         [Range(0.01, double.MaxValue, ErrorMessage = "Price must be greater than 0")]
         public decimal PricePerKilometer { get; set; }
+        
+        [Display(Name = "Waiting Hour Price")]
+        [Required(ErrorMessage = "Waiting hour price is required")]
+        [Range(0.01, double.MaxValue, ErrorMessage = "Waiting hour price must be greater than 0")]
+        public decimal WaitingHourPrice { get; set; }
     }
 } 

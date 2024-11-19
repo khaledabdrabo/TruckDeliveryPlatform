@@ -1,10 +1,12 @@
+@using Microsoft.Extensions.Localization
 @model IEnumerable<Job>
+@inject IStringLocalizer<SharedResource> Localizer
 
 <div class="container py-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2>My Dashboard</h2>
+        <h2>@Localizer["MyDashboard"]</h2>
         <a asp-controller="Jobs" asp-action="Create" class="btn btn-primary">
-            <i class="fas fa-plus-circle me-2"></i>Post New Job
+            <i class="fas fa-plus-circle me-2"></i>@Localizer["PostNewJob"]
         </a>
     </div>
 
@@ -12,10 +14,10 @@
         <div class="col-md-12 mb-4">
             <div class="card">
                 <div class="card-body">
-                    <h5 class="card-title mb-3">Recent Jobs</h5>
+                    <h5 class="card-title mb-3">@Localizer["RecentJobs"]</h5>
                     @if (!Model.Any())
                     {
-                        <p class="text-muted">You haven't posted any jobs yet.</p>
+                        <p class="text-muted">@Localizer["NoJobsYet"]</p>
                     }
                     else
                     {
@@ -23,11 +25,11 @@
                             <table class="table table-hover">
                                 <thead>
                                     <tr>
-                                        <th>Route</th>
-                                        <th>Status</th>
-                                        <th>Pickup Date</th>
-                                        <th>Bids</th>
-                                        <th>Actions</th>
+                                        <th>@Localizer["Route"]</th>
+                                        <th>@Localizer["Status"]</th>
+                                        <th>@Localizer["PickupDate"]</th>
+                                        <th>@Localizer["Bids"]</th>
+                                        <th>@Localizer["Actions"]</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -41,14 +43,14 @@
                                                     JobStatus.InProgress => "info",
                                                     JobStatus.Completed => "success",
                                                     _ => "secondary"
-                                                })">@job.Status</span>
+                                                })">@Localizer[job.Status.ToString()]</span>
                                             </td>
                                             <td>@job.PreferredPickupDate.ToString("MMM dd, yyyy")</td>
-                                            <td>@job.BidsCount bids</td>
+                                            <td>@job.BidsCount @Localizer["BidsCount"]</td>
                                             <td>
                                                 <a asp-controller="Jobs" asp-action="Details" asp-route-id="@job.Id" 
                                                    class="btn btn-sm btn-outline-primary">
-                                                    View Details
+                                                    <i class="fas fa-eye me-1"></i>@Localizer["ViewDetails"]
                                                 </a>
                                             </td>
                                         </tr>

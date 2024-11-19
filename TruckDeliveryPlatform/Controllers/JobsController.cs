@@ -7,6 +7,8 @@ using TruckDeliveryPlatform.Models;
 using TruckDeliveryPlatform.Models.ViewModels;
 using TruckDeliveryPlatform.Services;
 using TruckDeliveryPlatform.Helpers;
+using Microsoft.Extensions.Localization;
+using System.Security.Claims;
 
 namespace TruckDeliveryPlatform.Controllers
 {
@@ -106,7 +108,8 @@ namespace TruckDeliveryPlatform.Controllers
                     Status = JobStatus.Active,
                     CreatedAt = DateTime.UtcNow,
                     AcceptedBidId = null,
-                    CancelledAt = null
+                    CancelledAt = null,
+                    EstimatedWaitingHours = model.EstimatedWaitingHours
                 };
 
                 _context.Jobs.Add(job);
@@ -193,8 +196,11 @@ namespace TruckDeliveryPlatform.Controllers
                 await _context.SaveChangesAsync();
                 await transaction.CommitAsync();
 
-                // Send notification to truck owner (you can implement this later)
-                // await _notificationService.NotifyTruckOwner(bid.TruckOwnerId, "A customer has selected your bid");
+                // Redirect to payment page if bid is accepted
+                if (bid.Status == BidStatus.Selected)
+                {
+                    return RedirectToAction("ProcessJobPayment", "Payment", new { jobId = bid.JobId });
+                }
 
                 return RedirectToAction(nameof(Details), new { id = bid.JobId });
             }
@@ -230,9 +236,11 @@ namespace TruckDeliveryPlatform.Controllers
                 // Accept the bid and update job status
                 bid.Status = BidStatus.Accepted;
                 bid.Job.Status = JobStatus.Accepted;
+                bid.Job.AcceptedBid = bid;  // Set the AcceptedBid navigation property
                 bid.Job.AcceptedBidId = bid.Id;
                 bid.Job.AcceptedAt = DateTime.UtcNow;
                 bid.Job.AcceptedBidAmount = bid.BidAmount;
+                bid.Job.PaymentStatus = PaymentStatus.Pending;
 
                 // Mark all other bids as rejected
                 foreach (var otherBid in bid.Job.Bids.Where(b => b.Id != bidId))

@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using TruckDeliveryPlatform.Data;
 
@@ -11,9 +12,11 @@ using TruckDeliveryPlatform.Data;
 namespace TruckDeliveryPlatform.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20241119183327_AddPaymentEntities")]
+    partial class AddPaymentEntities
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -356,6 +359,9 @@ namespace TruckDeliveryPlatform.Migrations
                     b.Property<int?>("AcceptedBidId")
                         .HasColumnType("int");
 
+                    b.Property<int?>("AcceptedBidId1")
+                        .HasColumnType("int");
+
                     b.Property<string>("CancellationReason")
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
@@ -438,9 +444,7 @@ namespace TruckDeliveryPlatform.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("AcceptedBidId")
-                        .IsUnique()
-                        .HasFilter("[AcceptedBidId] IS NOT NULL");
+                    b.HasIndex("AcceptedBidId1");
 
                     b.HasIndex("CustomerId");
 
@@ -635,14 +639,8 @@ namespace TruckDeliveryPlatform.Migrations
                     b.Property<decimal>("BaseFee")
                         .HasColumnType("decimal(18,2)");
 
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
-
                     b.Property<decimal>("PricePerKilometer")
                         .HasColumnType("decimal(18,2)");
-
-                    b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("datetime2");
 
                     b.HasKey("Id");
 
@@ -653,7 +651,6 @@ namespace TruckDeliveryPlatform.Migrations
                         {
                             Id = 1,
                             BaseFee = 50m,
-                            CreatedAt = new DateTime(2024, 11, 19, 21, 4, 52, 959, DateTimeKind.Utc).AddTicks(7853),
                             PricePerKilometer = 2.5m
                         });
                 });
@@ -761,9 +758,6 @@ namespace TruckDeliveryPlatform.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
-
                     b.Property<string>("Description")
                         .HasColumnType("nvarchar(max)");
 
@@ -792,9 +786,6 @@ namespace TruckDeliveryPlatform.Migrations
 
                     b.Property<int>("TruckTypeId")
                         .HasColumnType("int");
-
-                    b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("datetime2");
 
                     b.Property<string>("UserId")
                         .IsRequired()
@@ -1032,9 +1023,8 @@ namespace TruckDeliveryPlatform.Migrations
             modelBuilder.Entity("TruckDeliveryPlatform.Models.Job", b =>
                 {
                     b.HasOne("TruckDeliveryPlatform.Models.Bid", "AcceptedBid")
-                        .WithOne()
-                        .HasForeignKey("TruckDeliveryPlatform.Models.Job", "AcceptedBidId")
-                        .OnDelete(DeleteBehavior.Restrict);
+                        .WithMany()
+                        .HasForeignKey("AcceptedBidId1");
 
                     b.HasOne("TruckDeliveryPlatform.Models.ApplicationUser", "Customer")
                         .WithMany()

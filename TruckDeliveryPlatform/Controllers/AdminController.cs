@@ -22,24 +22,12 @@ namespace TruckDeliveryPlatform.Controllers
 
         public async Task<IActionResult> Dashboard()
         {
-            var jobsWithBids = await _context.Jobs
-                .Include(j => j.Bids)
-                .Where(j => j.Bids.Any())
-                .ToListAsync();
-
-            double averageBidsPerJob = jobsWithBids.Any() 
-                ? jobsWithBids.Average(j => j.Bids.Count) 
-                : 0;
-
-            var stats = new AdminDashboardViewModel
+            var viewModel = new AdminDashboardViewModel
             {
-                TotalCustomers = await _userManager.GetUsersInRoleAsync("Customer"),
-                TotalTruckOwners = await _userManager.GetUsersInRoleAsync("TruckOwner"),
-                TotalJobs = await _context.Jobs.CountAsync(),
-                TotalBids = await _context.Bids.CountAsync(),
+                TotalCustomers = await _context.Users.Where(u => u.UserType == UserType.Customer).ToListAsync(),
+                TotalTruckOwners = await _context.Users.Where(u => u.UserType == UserType.TruckOwner).ToListAsync(),
                 ActiveJobs = await _context.Jobs.CountAsync(j => j.Status == JobStatus.Active),
-                CompletedJobs = await _context.Jobs.CountAsync(j => j.Status == JobStatus.Completed),
-                SystemConfig = await _context.SystemConfigs.FirstAsync(),
+                TotalBids = await _context.Bids.CountAsync(),
                 RecentJobs = await _context.Jobs
                     .Include(j => j.Customer)
                     .OrderByDescending(j => j.CreatedAt)
@@ -47,17 +35,85 @@ namespace TruckDeliveryPlatform.Controllers
                     .ToListAsync(),
                 RecentTruckOwners = await _context.TruckOwnerProfiles
                     .Include(p => p.User)
-                    .OrderByDescending(p => p.Id)
+                    .OrderByDescending(p => p.CreatedAt)
                     .Take(5)
-                    .ToListAsync(),
-                JobsByStatus = await _context.Jobs
-                    .GroupBy(j => j.Status)
-                    .Select(g => new { Status = g.Key, Count = g.Count() })
-                    .ToDictionaryAsync(x => x.Status, x => x.Count),
-                AverageBidsPerJob = averageBidsPerJob
+                    .ToListAsync()
             };
 
-            return View(stats);
+            // Get or create system config
+            var systemConfig = await _context.SystemConfigs.FirstOrDefaultAsync();
+            if (systemConfig == null)
+            {
+                systemConfig = new SystemConfig
+                {
+                    PricePerKilometer = 2.5M, // Default value
+                    BaseFee = 50M, // Default value
+                    CreatedAt = DateTime.UtcNow
+                };
+                _context.SystemConfigs.Add(systemConfig);
+                await _context.SaveChangesAsync();
+            }
+            viewModel.SystemConfig = systemConfig;
+
+            // Calculate statistics
+            var allJobs = await _context.Jobs.ToListAsync();
+            viewModel.TotalJobs = allJobs.Count;
+            viewModel.CompletedJobs = allJobs.Count(j => j.Status == JobStatus.Completed);
+            viewModel.CompletionRate = viewModel.TotalJobs > 0 
+                ? (double)viewModel.CompletedJobs / viewModel.TotalJobs * 100 
+                : 0;
+
+            // Calculate jobs by status
+            viewModel.JobsByStatus = allJobs
+                .GroupBy(j => j.Status)
+                .ToDictionary(g => g.Key, g => g.Count());
+
+            // Ensure all statuses are represented
+            foreach (JobStatus status in Enum.GetValues(typeof(JobStatus)))
+            {
+                if (!viewModel.JobsByStatus.ContainsKey(status))
+                {
+                    viewModel.JobsByStatus[status] = 0;
+                }
+            }
+
+            // Calculate average bids per job
+            viewModel.AverageBidsPerJob = viewModel.TotalJobs > 0 
+                ? (double)viewModel.TotalBids / viewModel.TotalJobs 
+                : 0;
+
+            return View(viewModel);
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> UpdateSystemConfig(decimal pricePerKilometer, decimal baseFee)
+        {
+            try
+            {
+                var config = await _context.SystemConfigs.FirstOrDefaultAsync();
+                if (config == null)
+                {
+                    config = new SystemConfig
+                    {
+                        CreatedAt = DateTime.UtcNow
+                    };
+                    _context.SystemConfigs.Add(config);
+                }
+
+                config.PricePerKilometer = pricePerKilometer;
+                config.BaseFee = baseFee;
+                config.UpdatedAt = DateTime.UtcNow;
+
+                await _context.SaveChangesAsync();
+                TempData["SuccessMessage"] = "System configuration updated successfully";
+            }
+            catch (Exception ex)
+            {
+                TempData["ErrorMessage"] = $"Error updating system configuration: {ex.Message}";
+            }
+
+            return RedirectToAction(nameof(Dashboard));
         }
 
         public async Task<IActionResult> TruckOwners()

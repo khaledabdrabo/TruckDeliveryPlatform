@@ -74,6 +74,7 @@ namespace TruckDeliveryPlatform.Models
 
         // Accepted bid reference
         public int? AcceptedBidId { get; set; }
+        [ForeignKey("AcceptedBidId")]
         public virtual Bid? AcceptedBid { get; set; }
 
         [Required]
@@ -108,6 +109,22 @@ namespace TruckDeliveryPlatform.Models
         {
             return Status == JobStatus.Active && !HasAcceptedBid && !CancelledAt.HasValue;
         }
+
+        [Display(Name = "Estimated Waiting Hours")]
+        [Required]
+        [Range(0, double.MaxValue, ErrorMessage = "Waiting hours must be 0 or greater")]
+        public decimal EstimatedWaitingHours { get; set; }
+
+        public decimal CalculateEstimatedWaitingCost(decimal hourlyRate)
+        {
+            return EstimatedWaitingHours * hourlyRate;
+        }
+
+        public PaymentStatus PaymentStatus { get; set; }
+        public DateTime? PaymentDueDate { get; set; }
+        public decimal? PaidAmount { get; set; }
+        public DateTime? PaidAt { get; set; }
+        public virtual Transaction Payment { get; set; }
     }
 
     public enum JobStatus
@@ -118,5 +135,15 @@ namespace TruckDeliveryPlatform.Models
         InProgress,  // Delivery is in progress
         Completed,   // Delivery completed
         Canceled     // Job canceled by either party
+    }
+
+    public enum PaymentStatus
+    {
+        Pending,    // Payment is awaiting customer action
+        Paid,       // Payment has been received but not yet confirmed
+        Completed,  // Payment has been confirmed and completed
+        Overdue,    // Payment is past due date
+        Refunded,   // Payment has been refunded
+        Failed      // Payment attempt failed
     }
 } 
