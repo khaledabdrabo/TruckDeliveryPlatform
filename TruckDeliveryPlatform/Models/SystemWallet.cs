@@ -7,8 +7,11 @@ namespace TruckDeliveryPlatform.Models
     {
         public int Id { get; set; }
         public decimal Balance { get; set; }
+        public decimal Revenue { get; set; }
         public DateTime LastUpdated { get; set; }
         public virtual ICollection<Transaction> Transactions { get; set; } = new List<Transaction>();
+
+        public static decimal TRANSACTION_FEE { get; set; } = 10M;
     }
 
     public class Transaction
@@ -17,6 +20,8 @@ namespace TruckDeliveryPlatform.Models
         public string ReferenceNumber { get; set; }
         public TransactionType Type { get; set; }
         public decimal Amount { get; set; }
+        public decimal PlatformFee { get; set; } = SystemWallet.TRANSACTION_FEE;
+        public decimal NetAmount => Amount - PlatformFee;
         public PaymentMethod PaymentMethod { get; set; }
         public string PaymentDetails { get; set; }
         public TransactionStatus Status { get; set; }

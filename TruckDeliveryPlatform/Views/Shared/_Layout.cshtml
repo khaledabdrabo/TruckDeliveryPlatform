@@ -1,3 +1,4 @@
+@using System.Security.Claims
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -26,12 +27,17 @@
                             {
                                 <li class="nav-item">
                                     <a class="nav-link text-dark" asp-controller="Admin" asp-action="Dashboard">
-                                        <i class="fas fa-chart-line me-1"></i>Admin Dashboard
+                                        <i class="fas fa-chart-line me-1"></i>Dashboard
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a class="nav-link text-dark" asp-controller="Admin" asp-action="WalletManagement">
+                                        <i class="fas fa-wallet me-1"></i>Payment Management
                                     </a>
                                 </li>
                                 <li class="nav-item">
                                     <a class="nav-link text-dark" asp-controller="Admin" asp-action="TruckOwners">
-                                        <i class="fas fa-users me-1"></i>Manage Truck Owners
+                                        <i class="fas fa-users me-1"></i>Truck Owners
                                     </a>
                                 </li>
                                 <li class="nav-item">
@@ -66,6 +72,65 @@
                                     </a>
                                 </li>
                             }
+
+                            <!-- Add notification bell -->
+                            <li class="nav-item dropdown">
+                                <a class="nav-link" href="#" id="notificationDropdown" role="button" 
+                                   data-bs-toggle="dropdown" aria-expanded="false">
+                                    <i class="fas fa-bell"></i>
+                                    @{
+                                        var unreadCount = await Context.RequestServices
+                                            .GetRequiredService<ApplicationDbContext>()
+                                            .Notifications
+                                            .CountAsync(n => n.UserId == User.FindFirstValue(ClaimTypes.NameIdentifier) && !n.IsRead);
+                                    }
+                                    @if (unreadCount > 0)
+                                    {
+                                        <span id="notificationBadge" style="width: 1.5rem;" class="badge bg-danger position-absolute top-0 start-100 translate-middle">
+                                            @unreadCount
+                                        </span>
+                                    }
+                                    else
+                                    {
+                                        <span id="notificationBadge" style="width: 1.5rem;" class="badge bg-danger position-absolute top-0 start-100 translate-middle"
+                                              style="display: none;">0</span>
+                                    }
+                                </a>
+                                <div class="dropdown-menu dropdown-menu-end notification-dropdown" 
+                                     aria-labelledby="notificationDropdown" style="width: 300px; max-height: 400px; overflow-y: auto;">
+                                    @{
+                                        var notifications = await Context.RequestServices
+                                            .GetRequiredService<ApplicationDbContext>()
+                                            .Notifications
+                                            .Where(n => n.UserId == User.FindFirstValue(ClaimTypes.NameIdentifier))
+                                            .OrderByDescending(n => n.CreatedAt)
+                                            .Take(10)
+                                            .ToListAsync();
+                                    }
+                                    @if (notifications.Any())
+                                    {
+                                        foreach (var notification in notifications)
+                                        {
+                                            <a class="dropdown-item @(!notification.IsRead ? "bg-light" : "")" 
+                                               href="@notification.Link">
+                                                <div class="d-flex w-100 justify-content-between">
+                                                    <h6 class="mb-1">@notification.Title</h6>
+                                                    <small>@((DateTime.UtcNow - notification.CreatedAt).TotalHours < 24 
+                                                        ? notification.CreatedAt.ToString("HH:mm")
+                                                        : notification.CreatedAt.ToString("MMM dd"))</small>
+                                                </div>
+                                                <p class="mb-1 text-muted small">@notification.Message</p>
+                                            </a>
+                                        }
+                                        <div class="dropdown-divider"></div>
+                                        <a class="dropdown-item text-center" href="#">View All Notifications</a>
+                                    }
+                                    else
+                                    {
+                                        <div class="dropdown-item text-muted text-center">No notifications</div>
+                                    }
+                                </div>
+                            </li>
                         }
                     </ul>
                     <partial name="_LoginPartial" />
@@ -89,6 +154,9 @@
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
     
+    <!-- Add SignalR client library -->
+    <script src="~/lib/microsoft/signalr/dist/browser/signalr.min.js"></script>
+    
     <!-- Site scripts -->
     <script src="~/js/site.js" asp-append-version="true"></script>
     
@@ -97,5 +165,185 @@
     <script src="~/lib/jquery-validation-unobtrusive/jquery.validate.unobtrusive.min.js"></script>
     
     @await RenderSectionAsync("Scripts", required: false)
+
+    <!-- Add before closing body tag -->
+    <div id="notificationToast" class="toast-container position-fixed bottom-0 end-0 p-3">
+        <div class="toast" role="alert" aria-live="assertive" aria-atomic="true">
+            <div class="toast-header bg-primary text-white">
+                <i class="fas fa-bell me-2"></i>
+                <strong class="me-auto" id="notificationTitle">Notification</strong>
+                <small id="notificationTime" class="text-white">just now</small>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast"></button>
+            </div>
+            <div class="toast-body">
+                <p id="notificationMessage" class="mb-2"></p>
+                <div class="mt-2 pt-2 border-top">
+                    <a id="notificationLink" href="#" class="btn btn-primary btn-sm">View Details</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <style>
+        .notification-dropdown {
+            width: 350px !important;
+            max-height: 500px;
+            overflow-y: auto;
+        }
+
+        .notification-item {
+            padding: 1rem;
+            border-bottom: 1px solid #eee;
+            transition: background-color 0.2s;
+        }
+
+        .notification-item:hover {
+            background-color: #f8f9fa;
+        }
+
+        .notification-item.unread {
+            background-color: #e8f4ff;
+            border-left: 4px solid #007bff;
+        }
+
+        .notification-title {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 0.25rem;
+        }
+
+        .notification-message {
+            color: #666;
+            font-size: 0.9rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .notification-time {
+            font-size: 0.8rem;
+            color: #999;
+        }
+
+        #notificationToast {
+            z-index: 1056;
+        }
+
+        #notificationToast .toast {
+            min-width: 350px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+
+        #notificationToast .toast-body {
+            padding: 1rem;
+        }
+
+        #notificationBadge {
+            position: absolute;
+            top: 0;
+            right: 0;
+            transform: translate(50%, -50%);
+        }
+    </style>
+
+    <script>
+        console.log("Starting notification setup...");
+        
+        // First set up SignalR connection
+        const connection = new signalR.HubConnectionBuilder()
+            .withUrl("/notificationHub")
+            .withAutomaticReconnect()
+            .configureLogging(signalR.LogLevel.Debug)  // Add debug logging
+            .build();
+
+        // Debug connection state changes
+        connection.onreconnecting(error => {
+            console.log('Reconnecting to SignalR hub...', error);
+        });
+
+        connection.onreconnected(connectionId => {
+            console.log('Reconnected to SignalR hub. ConnectionId:', connectionId);
+        });
+
+        connection.onclose(error => {
+            console.log('SignalR connection closed.', error);
+        });
+
+        // Initialize audio
+        const notificationSound = new Audio('/sounds/notification.mp3');
+        console.log('Notification sound initialized');
+
+        // Start connection
+        async function startConnection() {
+            try {
+                await connection.start();
+                console.log("SignalR Connected Successfully!");
+            } catch (err) {
+                console.error("SignalR Connection Error:", err);
+                setTimeout(startConnection, 5000); // Retry after 5 seconds
+            }
+        }
+
+        // Handle notifications
+        connection.on("ReceiveNotification", (notification) => {
+            console.log("Received notification:", notification);
+            
+            // Update notification toast
+            document.getElementById("notificationTitle").textContent = notification.title;
+            document.getElementById("notificationMessage").textContent = notification.message;
+            document.getElementById("notificationTime").textContent = new Date(notification.timestamp).toLocaleTimeString();
+            
+            // Update notification link if provided
+            const linkButton = document.getElementById("notificationLink");
+            if (notification.link) {
+                linkButton.href = notification.link;
+                linkButton.style.display = "inline-block";
+            } else {
+                linkButton.style.display = "none";
+            }
+
+            // Show the toast
+            const toast = new bootstrap.Toast(document.querySelector('#notificationToast .toast'), {
+                autohide: true,
+                delay: 5000
+            });
+            toast.show();
+
+            // Update notification badge
+            const badge = document.getElementById("notificationBadge");
+            if (badge) {
+                const count = parseInt(badge.textContent || "0");
+                badge.textContent = count + 1;
+                badge.style.display = "inline";
+            }
+
+            // Play notification sound
+            try {
+                notificationSound.currentTime = 0;
+                notificationSound.play()
+                    .then(() => console.log('Sound played successfully'))
+                    .catch(error => console.error('Error playing sound:', error));
+            } catch (error) {
+                console.error('Error with notification sound:', error);
+            }
+        });
+
+        // Start the connection when document is ready
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log("Document ready, starting connection...");
+            startConnection();
+        });
+
+        // Enable sound on first user interaction
+        document.addEventListener('click', async () => {
+            console.log("User interaction detected");
+            try {
+                await notificationSound.play();
+                notificationSound.pause();
+                notificationSound.currentTime = 0;
+                console.log('Sound enabled through user interaction');
+            } catch(e) {
+                console.log('Error enabling sound:', e);
+            }
+        }, { once: true });
+    </script>
 </body>
 </html> 

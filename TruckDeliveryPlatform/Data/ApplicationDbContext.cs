@@ -21,6 +21,8 @@ namespace TruckDeliveryPlatform.Data
         public DbSet<PaymentDetails> PaymentDetails { get; set; }
         public DbSet<Transaction> Transactions { get; set; }
         public DbSet<SystemWallet> SystemWallets { get; set; }
+        public DbSet<TransactionFeeHistory> TransactionFeeHistory { get; set; }
+        public DbSet<Notification> Notifications { get; set; }
 
         protected override void OnModelCreating(ModelBuilder builder)
         {
@@ -336,6 +338,13 @@ namespace TruckDeliveryPlatform.Data
                 .HasMany(w => w.Transactions)
                 .WithOne()
                 .OnDelete(DeleteBehavior.Restrict);
+
+            // Configure Notification relationships
+            builder.Entity<Notification>()
+                .HasOne(n => n.User)
+                .WithMany()
+                .HasForeignKey(n => n.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
         }
     }
 } 

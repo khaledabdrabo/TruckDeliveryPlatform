@@ -125,6 +125,8 @@ namespace TruckDeliveryPlatform.Models
         public decimal? PaidAmount { get; set; }
         public DateTime? PaidAt { get; set; }
         public virtual Transaction Payment { get; set; }
+
+        public DateTime? StartedAt { get; set; }
     }
 
     public enum JobStatus
@@ -132,6 +134,7 @@ namespace TruckDeliveryPlatform.Models
         Active,      // Job is posted and accepting bids
         Selected,    // Bid has been selected, waiting for truck owner confirmation
         Accepted,    // Truck owner has accepted the job
+        Started,     // Trip has started
         InProgress,  // Delivery is in progress
         Completed,   // Delivery completed
         Canceled     // Job canceled by either party

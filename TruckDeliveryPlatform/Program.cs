@@ -6,6 +6,8 @@ using TruckDeliveryPlatform.Services;
 using Microsoft.AspNetCore.Localization;
 using System.Globalization;
 using Microsoft.Extensions.Options;
+using Microsoft.AspNetCore.SignalR;
+using TruckDeliveryPlatform.Hubs;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -72,6 +74,9 @@ builder.Services.ConfigureApplicationCookie(options =>
 // Add this line after other service registrations
 builder.Services.AddHttpContextAccessor();
 
+// Add SignalR services
+builder.Services.AddSignalR();
+
 var app = builder.Build();
 
 // Configure localization middleware
@@ -131,6 +136,9 @@ app.MapControllerRoute(
     name: "default",
     pattern: "{controller=Home}/{action=Index}/{id?}");
 app.MapRazorPages();
+
+// Add SignalR hub endpoint
+app.MapHub<NotificationHub>("/notificationHub");
 
 // Create database and apply migrations
 using (var scope = app.Services.CreateScope())

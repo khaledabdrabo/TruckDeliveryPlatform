@@ -50,7 +50,7 @@ namespace TruckDeliveryPlatform.Controllers
             var viewModel = new ProcessPaymentViewModel
             {
                 JobId = job.Id,
-                Amount = job.AcceptedBid.BidAmount,//+ (job.EstimatedWaitingHours * job.AcceptedBid.WaitingHourPrice),
+                Amount = job.AcceptedBid.BidAmount + ((job.EstimatedWaitingHours-1) * job.AcceptedBid.WaitingHourPrice),
                 //PaymentMethods = paymentMethods,
                 //AvailablePaymentMethods = Enum.GetValues<PaymentMethod>().ToList(),
                 ReferenceNumber = referenceNumber
@@ -88,7 +88,7 @@ namespace TruckDeliveryPlatform.Controllers
             using var transaction = await _context.Database.BeginTransactionAsync();
             try
             {
-                var totalAmount = job.AcceptedBid.BidAmount + (job.EstimatedWaitingHours * job.AcceptedBid.WaitingHourPrice);
+                var totalAmount = job.AcceptedBid.BidAmount + ((job.EstimatedWaitingHours-1) * job.AcceptedBid.WaitingHourPrice);
 
                 // Create payment transaction
                 var paymentTransaction = new Transaction
@@ -166,16 +166,19 @@ namespace TruckDeliveryPlatform.Controllers
                 transaction.Job.PaymentStatus = PaymentStatus.Paid;
                 transaction.Job.PaidAt = DateTime.UtcNow;
                 transaction.Job.PaidAmount = transaction.Amount;
-                transaction.Job.Status = JobStatus.InProgress; // Update job status to InProgress
+                transaction.Job.Status = JobStatus.InProgress;
 
                 // Update system wallet
                 var systemWallet = await _context.SystemWallets.FirstOrDefaultAsync();
                 if (systemWallet == null)
                 {
-                    systemWallet = new SystemWallet { Balance = 0, LastUpdated = DateTime.UtcNow };
+                    systemWallet = new SystemWallet { Balance = 0, Revenue = 0, LastUpdated = DateTime.UtcNow };
                     _context.SystemWallets.Add(systemWallet);
                 }
+
+                // Add full amount to balance and platform fee to revenue
                 systemWallet.Balance += transaction.Amount;
+                systemWallet.Revenue += transaction.PlatformFee;
                 systemWallet.LastUpdated = DateTime.UtcNow;
 
                 await _context.SaveChangesAsync();

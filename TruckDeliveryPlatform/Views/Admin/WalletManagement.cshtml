@@ -1,0 +1,409 @@
+@model SystemWalletViewModel
+
+<div class="container py-4">
+    <div class="row">
+        <!-- Wallet Overview Card -->
+        <div class="col-md-4 mb-4">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">System Wallet</h5>
+                    <div class="h2 mb-3 text-primary">@((int)Model.Wallet.Balance) EGP</div>
+                    <div class="text-muted small">Last updated: @Model.Wallet.LastUpdated.ToString("MMM dd, yyyy HH:mm")</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Transaction Summary -->
+        <div class="col-md-8 mb-4">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Transaction Summary</h5>
+                    <div class="row">
+                        <div class="col-md-3">
+                            <div class="text-success">
+                                <div class="h4">@((int)Model.TotalIncome) EGP</div>
+                                <div>Total Income</div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="text-danger">
+                                <div class="h4">@((int)Model.TotalPayout) EGP</div>
+                                <div>Total Payouts</div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="text-warning">
+                                <div class="h4">@((int)Model.PendingPayoutsAmount) EGP</div>
+                                <div>Pending Payouts</div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="text-info">
+                                <div class="h4">@((int)Model.Wallet.Revenue) EGP</div>
+                                <div>Platform Revenue</div>
+                                <small class="text-muted">(@SystemWallet.TRANSACTION_FEE EGP per transaction)</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Revenue Analytics</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3">
+                            <div class="text-primary">
+                                <div class="h4">@((int)Model.RevenueAnalytics["TotalRevenue"]) EGP</div>
+                                <div>Total Revenue</div>
+                                <small class="text-muted">Platform fees from all transactions</small>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="text-success">
+                                <div class="h4">@((int)Model.RevenueAnalytics["TodayRevenue"]) EGP</div>
+                                <div>Today's Revenue</div>
+                                <small class="text-muted">@Model.TransactionFee EGP per transaction</small>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="text-info">
+                                <div class="h4">@((int)Model.RevenueAnalytics["MonthlyRevenue"]) EGP</div>
+                                <div>Monthly Revenue</div>
+                                <small class="text-muted">
+                                    <span class="@(Model.GetRevenueGrowth() >= 0 ? "text-success" : "text-danger")">
+                                        @Model.FormatGrowth(Model.GetRevenueGrowth())
+                                    </span> from last month
+                                </small>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="text-warning">
+                                <div class="h4">@((int)Model.RevenueAnalytics["AverageRevenue"]) EGP</div>
+                                <div>Avg. Revenue/Transaction</div>
+                                <small class="text-muted">Based on completed transactions</small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row mt-4">
+                        <div class="col-md-6">
+                            <h6>Revenue by Payment Method</h6>
+                            @foreach (var method in Model.RevenueByPaymentMethod)
+                            {
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <span>@method.Key</span>
+                                    <span class="badge bg-primary">@((int)method.Value) EGP</span>
+                                </div>
+                            }
+                        </div>
+                        <div class="col-md-6">
+                            <h6>Daily Revenue (Last 7 Days)</h6>
+                            @foreach (var revenue in Model.DailyRevenue.OrderByDescending(x => x.Key).Take(7))
+                            {
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <span>@revenue.Key.ToString("MMM dd")</span>
+                                    <span class="badge bg-success">@((int)revenue.Value) EGP</span>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Transaction Fee Management</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="alert alert-info">
+                                <h6><i class="fas fa-info-circle me-2"></i>Current Transaction Fee</h6>
+                                <div class="h3">@((int)Model.TransactionFee) EGP</div>
+                                <small class="text-muted">This fee is charged for each transaction</small>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <form asp-action="UpdateTransactionFee" method="post" class="mt-2">
+                                <div class="form-group mb-3">
+                                    <label class="form-label">New Transaction Fee</label>
+                                    <div class="input-group">
+                                        <input type="number" name="transactionFee" class="form-control" 
+                                               value="@((int)Model.TransactionFee)" min="0" step="1" required />
+                                        <span class="input-group-text">EGP</span>
+                                    </div>
+                                    <small class="text-muted">Enter the new fee amount in EGP</small>
+                                </div>
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-save me-2"></i>Update Fee
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+
+                    <!-- Fee History -->
+                    <div class="mt-4">
+                        <h6>Fee History</h6>
+                        <div class="table-responsive">
+                            <table class="table table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>Date</th>
+                                        <th>Previous Fee</th>
+                                        <th>New Fee</th>
+                                        <th>Updated By</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var history in Model.FeeHistory.OrderByDescending(h => h.UpdatedAt))
+                                    {
+                                        <tr>
+                                            <td>@history.UpdatedAt.ToString("MMM dd, yyyy HH:mm")</td>
+                                            <td>@((int)history.PreviousFee) EGP</td>
+                                            <td>@((int)history.NewFee) EGP</td>
+                                            <td>@history.UpdatedBy</td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Payment Status -->
+        <div class="col-md-4 mb-4">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Payment Status</h5>
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between mb-1">
+                            <span>Pending</span>
+                            <span class="badge bg-warning">@Model.PendingPayments</span>
+                        </div>
+                        <div class="d-flex justify-content-between mb-1">
+                            <span>Completed</span>
+                            <span class="badge bg-success">@Model.CompletedPayments</span>
+                        </div>
+                        <div class="d-flex justify-content-between">
+                            <span>Failed</span>
+                            <span class="badge bg-danger">@Model.FailedPayments</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Payment Methods -->
+        <div class="col-md-4 mb-4">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Payment Methods</h5>
+                    @foreach (var method in Model.PaymentMethodStats)
+                    {
+                        <div class="d-flex justify-content-between mb-2">
+                            <span>@method.Key</span>
+                            <span class="badge bg-primary">@method.Value</span>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <!-- Daily Balance -->
+        <div class="col-md-4 mb-4">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Daily Balance</h5>
+                    @foreach (var balance in Model.DailyBalance.OrderByDescending(b => b.Key).Take(5))
+                    {
+                        <div class="d-flex justify-content-between mb-2">
+                            <span>@balance.Key.ToString("MMM dd")</span>
+                            <span class="@(balance.Value >= 0 ? "text-success" : "text-danger")">
+                                @((int)balance.Value) EGP
+                            </span>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Filter Section -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <form method="get" id="filterForm" class="row g-3">
+                <div class="col-md-3">
+                    <label class="form-label">Transaction Type</label>
+                    <select name="type" class="form-select" onchange="this.form.submit()">
+                        <option value="">All Types</option>
+                        <option value="CustomerPayment" selected="@(Context.Request.Query["type"] == "CustomerPayment")">
+                            Customer Payments
+                        </option>
+                        <option value="TruckOwnerPayout" selected="@(Context.Request.Query["type"] == "TruckOwnerPayout")">
+                            Truck Owner Payouts
+                        </option>
+                    </select>
+                </div>
+
+                <div class="col-md-3">
+                    <label class="form-label">Status</label>
+                    <select name="status" class="form-select" onchange="this.form.submit()">
+                        <option value="">All Statuses</option>
+                        <option value="Pending" selected="@(Context.Request.Query["status"] == "Pending")">
+                            Pending
+                        </option>
+                        <option value="Completed" selected="@(Context.Request.Query["status"] == "Completed")">
+                            Completed
+                        </option>
+                        <option value="Failed" selected="@(Context.Request.Query["status"] == "Failed")">
+                            Failed
+                        </option>
+                    </select>
+                </div>
+
+                <div class="col-md-3">
+                    <label class="form-label">Date Range</label>
+                    <select name="dateRange" class="form-select" onchange="this.form.submit()">
+                        <option value="">All Time</option>
+                        <option value="today" selected="@(Context.Request.Query["dateRange"] == "today")">
+                            Today
+                        </option>
+                        <option value="week" selected="@(Context.Request.Query["dateRange"] == "week")">
+                            This Week
+                        </option>
+                        <option value="month" selected="@(Context.Request.Query["dateRange"] == "month")">
+                            This Month
+                        </option>
+                    </select>
+                </div>
+
+                <div class="col-md-3">
+                    <label class="form-label">Search</label>
+                    <div class="input-group">
+                        <input type="text" name="search" class="form-control" 
+                               placeholder="Reference number..." 
+                               value="@Context.Request.Query["search"]">
+                        <button class="btn btn-outline-secondary" type="submit">
+                            <i class="fas fa-search"></i>
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Recent Transactions with Applied Filters -->
+    <div class="card">
+        <div class="card-body">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="card-title mb-0">Transactions</h5>
+                <div class="btn-group">
+                    <button type="button" class="btn btn-outline-primary" onclick="exportToExcel()">
+                        <i class="fas fa-file-excel me-2"></i>Export
+                    </button>
+                    <button type="button" class="btn btn-outline-primary" onclick="printTransactions()">
+                        <i class="fas fa-print me-2"></i>Print
+                    </button>
+                </div>
+            </div>
+
+            <div class="table-responsive">
+                <table class="table" id="transactionsTable">
+                    <thead>
+                        <tr>
+                            <th>Reference</th>
+                            <th>Type</th>
+                            <th>Amount</th>
+                            <th>Platform Fee</th>
+                            <th>Net Amount</th>
+                            <th>Status</th>
+                            <th>Date</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var transaction in Model.RecentTransactions)
+                        {
+                            <tr>
+                                <td>@transaction.ReferenceNumber</td>
+                                <td>
+                                    <span class="badge bg-@(transaction.Type == TransactionType.CustomerPayment ? "success" : "info")">
+                                        @transaction.Type
+                                    </span>
+                                </td>
+                                <td>@((int)transaction.Amount) EGP</td>
+                                <td>@((int)transaction.PlatformFee) EGP</td>
+                                <td>@((int)transaction.NetAmount) EGP</td>
+                                <td>
+                                    <span class="badge bg-@(transaction.Status switch {
+                                        TransactionStatus.Completed => "success",
+                                        TransactionStatus.Pending => "warning",
+                                        TransactionStatus.Failed => "danger",
+                                        _ => "secondary"
+                                    })">@transaction.Status</span>
+                                </td>
+                                <td>@transaction.CreatedAt.ToString("MMM dd, yyyy HH:mm")</td>
+                                <td>
+                                    <a href="@Url.Action("TransactionDetails", new { id = transaction.Id })" 
+                                       class="btn btn-sm btn-outline-primary">
+                                        <i class="fas fa-eye me-1"></i>Details
+                                    </a>
+                                    @if (transaction.Status == TransactionStatus.Pending && 
+                                         transaction.Type == TransactionType.TruckOwnerPayout)
+                                    {
+                                        <form asp-action="ProcessPayout" method="post" class="d-inline">
+                                            <input type="hidden" name="transactionId" value="@transaction.Id" />
+                                            <button type="submit" class="btn btn-sm btn-success"
+                                                    onclick="return confirm('Process this payout?')">
+                                                <i class="fas fa-check me-1"></i>Process
+                                            </button>
+                                        </form>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Pagination -->
+            <nav aria-label="Transaction navigation" class="mt-4">
+                <ul class="pagination justify-content-center">
+                    @for (int i = 1; i <= Model.TotalPages; i++)
+                    {
+                        <li class="page-item @(i == Model.CurrentPage ? "active" : "")">
+                            <a class="page-link" href="@Url.Action("WalletManagement", new { page = i })">@i</a>
+                        </li>
+                    }
+                </ul>
+            </nav>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        function exportToExcel() {
+            window.location.href = '@Url.Action("ExportTransactions")' + window.location.search;
+        }
+
+        function printTransactions() {
+            window.print();
+        }
+    </script>
+} 
