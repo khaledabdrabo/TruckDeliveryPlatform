@@ -18,10 +18,27 @@ namespace TruckDeliveryPlatform.Data
         public DbSet<SystemConfig> SystemConfigs { get; set; }
         public DbSet<TruckOwnerProfile> TruckOwnerProfiles { get; set; }
         public DbSet<TruckOwnerRating> TruckOwnerRatings { get; set; }
+        public DbSet<PaymentDetails> PaymentDetails { get; set; }
+        public DbSet<Transaction> Transactions { get; set; }
+        public DbSet<SystemWallet> SystemWallets { get; set; }
+        public DbSet<TransactionFeeHistory> TransactionFeeHistory { get; set; }
+        public DbSet<Notification> Notifications { get; set; }
 
         protected override void OnModelCreating(ModelBuilder builder)
         {
             base.OnModelCreating(builder);
+
+            builder.Entity<TruckOwnerProfile>()
+                .Property(p => p.WaitingHourPrice)
+                .HasColumnType("decimal(18,2)");
+
+            builder.Entity<Job>()
+                .Property(j => j.EstimatedWaitingHours)
+                .HasColumnType("decimal(18,2)");
+
+            builder.Entity<Bid>()
+                .Property(b => b.WaitingHourPrice)
+                .HasColumnType("decimal(18,2)");
 
             // Configure Job relationships
             builder.Entity<Job>()
@@ -48,13 +65,21 @@ namespace TruckDeliveryPlatform.Data
                 .HasForeignKey(j => j.TruckTypeId)
                 .OnDelete(DeleteBehavior.Restrict);
 
-            // Configure Bid relationships
-            builder.Entity<Bid>()
-                .HasOne(b => b.Job)
-                .WithMany(j => j.Bids)
+            // Configure Job-AcceptedBid relationship
+            builder.Entity<Job>()
+                .HasOne(j => j.AcceptedBid)
+                .WithOne()
+                .HasForeignKey<Job>(j => j.AcceptedBidId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // Configure Job-Bids relationship
+            builder.Entity<Job>()
+                .HasMany(j => j.Bids)
+                .WithOne(b => b.Job)
                 .HasForeignKey(b => b.JobId)
                 .OnDelete(DeleteBehavior.Cascade);
 
+            // Configure Bid relationships
             builder.Entity<Bid>()
                 .HasOne(b => b.TruckOwner)
                 .WithMany()
@@ -288,6 +313,38 @@ namespace TruckDeliveryPlatform.Data
                     Description = "Large truck for heavy cargo and long-distance transport"
                 }
             );
+
+            // Configure Transaction relationships
+            builder.Entity<Transaction>()
+                .HasOne(t => t.Job)
+                .WithMany()
+                .HasForeignKey(t => t.JobId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            builder.Entity<Transaction>()
+                .HasOne(t => t.Customer)
+                .WithMany()
+                .HasForeignKey(t => t.CustomerId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            builder.Entity<Transaction>()
+                .HasOne(t => t.TruckOwner)
+                .WithMany()
+                .HasForeignKey(t => t.TruckOwnerId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // Configure SystemWallet
+            builder.Entity<SystemWallet>()
+                .HasMany(w => w.Transactions)
+                .WithOne()
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // Configure Notification relationships
+            builder.Entity<Notification>()
+                .HasOne(n => n.User)
+                .WithMany()
+                .HasForeignKey(n => n.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
         }
     }
 } 

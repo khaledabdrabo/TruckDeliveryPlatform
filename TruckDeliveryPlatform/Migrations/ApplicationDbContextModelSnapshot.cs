@@ -174,6 +174,108 @@ namespace TruckDeliveryPlatform.Migrations
                     b.ToTable("AspNetUserTokens", (string)null);
                 });
 
+            modelBuilder.Entity("Notification", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsRead")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Link")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Message")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("Notifications");
+                });
+
+            modelBuilder.Entity("PaymentDetails", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("AccountName")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("AccountNumber")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("BankName")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsDefault")
+                        .HasColumnType("bit");
+
+                    b.Property<int>("Method")
+                        .HasColumnType("int");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("PaymentDetails");
+                });
+
+            modelBuilder.Entity("TransactionFeeHistory", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<decimal>("NewFee")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal>("PreviousFee")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("UpdatedBy")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("TransactionFeeHistory");
+                });
+
             modelBuilder.Entity("TruckDeliveryPlatform.Models.ApplicationUser", b =>
                 {
                     b.Property<string>("Id")
@@ -287,6 +389,9 @@ namespace TruckDeliveryPlatform.Migrations
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime2");
 
+                    b.Property<decimal>("WaitingHourPrice")
+                        .HasColumnType("decimal(18,2)");
+
                     b.HasKey("Id");
 
                     b.HasIndex("JobId");
@@ -311,9 +416,6 @@ namespace TruckDeliveryPlatform.Migrations
                         .HasColumnType("decimal(18,2)");
 
                     b.Property<int?>("AcceptedBidId")
-                        .HasColumnType("int");
-
-                    b.Property<int?>("AcceptedBidId1")
                         .HasColumnType("int");
 
                     b.Property<string>("CancellationReason")
@@ -344,10 +446,25 @@ namespace TruckDeliveryPlatform.Migrations
                     b.Property<decimal>("EstimatedCost")
                         .HasColumnType("decimal(18,2)");
 
+                    b.Property<decimal>("EstimatedWaitingHours")
+                        .HasColumnType("decimal(18,2)");
+
                     b.Property<string>("GoodsType")
                         .IsRequired()
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
+
+                    b.Property<decimal?>("PaidAmount")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<DateTime?>("PaidAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("PaymentDueDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("PaymentStatus")
+                        .HasColumnType("int");
 
                     b.Property<string>("PickupLocation")
                         .IsRequired()
@@ -372,6 +489,9 @@ namespace TruckDeliveryPlatform.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
 
+                    b.Property<DateTime?>("StartedAt")
+                        .HasColumnType("datetime2");
+
                     b.Property<int>("Status")
                         .HasColumnType("int");
 
@@ -383,7 +503,9 @@ namespace TruckDeliveryPlatform.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("AcceptedBidId1");
+                    b.HasIndex("AcceptedBidId")
+                        .IsUnique()
+                        .HasFilter("[AcceptedBidId] IS NOT NULL");
 
                     b.HasIndex("CustomerId");
 
@@ -578,8 +700,17 @@ namespace TruckDeliveryPlatform.Migrations
                     b.Property<decimal>("BaseFee")
                         .HasColumnType("decimal(18,2)");
 
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
                     b.Property<decimal>("PricePerKilometer")
                         .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal>("TransactionFee")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
 
                     b.HasKey("Id");
 
@@ -590,8 +721,104 @@ namespace TruckDeliveryPlatform.Migrations
                         {
                             Id = 1,
                             BaseFee = 50m,
-                            PricePerKilometer = 2.5m
+                            CreatedAt = new DateTime(2024, 11, 21, 12, 43, 39, 62, DateTimeKind.Utc).AddTicks(4511),
+                            PricePerKilometer = 2.5m,
+                            TransactionFee = 10m
                         });
+                });
+
+            modelBuilder.Entity("TruckDeliveryPlatform.Models.SystemWallet", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<decimal>("Balance")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<DateTime>("LastUpdated")
+                        .HasColumnType("datetime2");
+
+                    b.Property<decimal>("Revenue")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("SystemWallets");
+                });
+
+            modelBuilder.Entity("TruckDeliveryPlatform.Models.Transaction", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<decimal>("Amount")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<DateTime?>("CompletedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("CustomerId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<int?>("JobId")
+                        .IsRequired()
+                        .HasColumnType("int");
+
+                    b.Property<int?>("JobId1")
+                        .HasColumnType("int");
+
+                    b.Property<string>("PaymentDetails")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("PaymentMethod")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("PlatformFee")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("ReferenceNumber")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("SystemWalletId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("TruckOwnerId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<int>("Type")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CustomerId");
+
+                    b.HasIndex("JobId");
+
+                    b.HasIndex("JobId1")
+                        .IsUnique()
+                        .HasFilter("[JobId1] IS NOT NULL");
+
+                    b.HasIndex("SystemWalletId");
+
+                    b.HasIndex("TruckOwnerId");
+
+                    b.ToTable("Transactions");
                 });
 
             modelBuilder.Entity("TruckDeliveryPlatform.Models.TruckOwnerProfile", b =>
@@ -608,6 +835,9 @@ namespace TruckDeliveryPlatform.Migrations
                     b.Property<string>("CompanyName")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
 
                     b.Property<string>("Description")
                         .HasColumnType("nvarchar(max)");
@@ -638,9 +868,15 @@ namespace TruckDeliveryPlatform.Migrations
                     b.Property<int>("TruckTypeId")
                         .HasColumnType("int");
 
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
                     b.Property<string>("UserId")
                         .IsRequired()
                         .HasColumnType("nvarchar(450)");
+
+                    b.Property<decimal>("WaitingHourPrice")
+                        .HasColumnType("decimal(18,2)");
 
                     b.HasKey("Id");
 
@@ -838,6 +1074,28 @@ namespace TruckDeliveryPlatform.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("Notification", b =>
+                {
+                    b.HasOne("TruckDeliveryPlatform.Models.ApplicationUser", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("PaymentDetails", b =>
+                {
+                    b.HasOne("TruckDeliveryPlatform.Models.ApplicationUser", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("TruckDeliveryPlatform.Models.Bid", b =>
                 {
                     b.HasOne("TruckDeliveryPlatform.Models.Job", "Job")
@@ -860,8 +1118,9 @@ namespace TruckDeliveryPlatform.Migrations
             modelBuilder.Entity("TruckDeliveryPlatform.Models.Job", b =>
                 {
                     b.HasOne("TruckDeliveryPlatform.Models.Bid", "AcceptedBid")
-                        .WithMany()
-                        .HasForeignKey("AcceptedBidId1");
+                        .WithOne()
+                        .HasForeignKey("TruckDeliveryPlatform.Models.Job", "AcceptedBidId")
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("TruckDeliveryPlatform.Models.ApplicationUser", "Customer")
                         .WithMany()
@@ -896,6 +1155,42 @@ namespace TruckDeliveryPlatform.Migrations
                     b.Navigation("PickupLocationNavigation");
 
                     b.Navigation("TruckType");
+                });
+
+            modelBuilder.Entity("TruckDeliveryPlatform.Models.Transaction", b =>
+                {
+                    b.HasOne("TruckDeliveryPlatform.Models.ApplicationUser", "Customer")
+                        .WithMany()
+                        .HasForeignKey("CustomerId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("TruckDeliveryPlatform.Models.Job", "Job")
+                        .WithMany()
+                        .HasForeignKey("JobId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("TruckDeliveryPlatform.Models.Job", null)
+                        .WithOne("Payment")
+                        .HasForeignKey("TruckDeliveryPlatform.Models.Transaction", "JobId1");
+
+                    b.HasOne("TruckDeliveryPlatform.Models.SystemWallet", null)
+                        .WithMany("Transactions")
+                        .HasForeignKey("SystemWalletId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("TruckDeliveryPlatform.Models.ApplicationUser", "TruckOwner")
+                        .WithMany()
+                        .HasForeignKey("TruckOwnerId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Customer");
+
+                    b.Navigation("Job");
+
+                    b.Navigation("TruckOwner");
                 });
 
             modelBuilder.Entity("TruckDeliveryPlatform.Models.TruckOwnerProfile", b =>
@@ -947,6 +1242,14 @@ namespace TruckDeliveryPlatform.Migrations
             modelBuilder.Entity("TruckDeliveryPlatform.Models.Job", b =>
                 {
                     b.Navigation("Bids");
+
+                    b.Navigation("Payment")
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("TruckDeliveryPlatform.Models.SystemWallet", b =>
+                {
+                    b.Navigation("Transactions");
                 });
 
             modelBuilder.Entity("TruckDeliveryPlatform.Models.TruckOwnerProfile", b =>

@@ -1,0 +1,90 @@
+@model Transaction
+
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-body">
+                    <h2 class="card-title text-center mb-4">Payment Instructions</h2>
+
+                    <div class="alert alert-info mb-4">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <strong>Reference Number:</strong><br />
+                                @Model.ReferenceNumber
+                            </div>
+                            <div class="col-md-6">
+                                <strong>Amount:</strong><br />
+                                @((int)Model.Amount) EGP
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="payment-details mb-4">
+                        @if (Model.PaymentMethod == PaymentMethod.BankTransfer)
+                        {
+                            <div class="alert alert-secondary">
+                                <h6><i class="fas fa-university me-2"></i>Bank Transfer Details</h6>
+                                <p class="mb-2">Please transfer to:</p>
+                                <ul class="list-unstyled">
+                                    <li><strong>Bank Name:</strong> Example Bank</li>
+                                    <li><strong>Account Name:</strong> Truck Delivery Platform</li>
+                                    <li><strong>Account Number:</strong> 1234567890</li>
+                                    <li><strong>Reference:</strong> @Model.ReferenceNumber</li>
+                                </ul>
+                            </div>
+                        }
+                        else if (Model.PaymentMethod == PaymentMethod.VodafoneCash)
+                        {
+                            <div class="alert alert-secondary">
+                                <h6><i class="fas fa-mobile-alt me-2"></i>Vodafone Cash Details</h6>
+                                <p class="mb-2">Please send to:</p>
+                                <ul class="list-unstyled">
+                                    @if (!string.IsNullOrEmpty(Model.PaymentDetails))
+                                    {
+                                        var details = Model.PaymentDetails.Split(',')
+                                            .Select(d => d.Split(':'))
+                                            .ToDictionary(d => d[0].Trim(), d => d[1].Trim());
+
+                                        if (details.ContainsKey("Wallet Owner"))
+                                        {
+                                            <li><strong>Wallet Owner:</strong> @details["Wallet Owner"]</li>
+                                        }
+                                        if (details.ContainsKey("Wallet Number"))
+                                        {
+                                            <li><strong>Wallet Number:</strong> @details["Wallet Number"]</li>
+                                        }
+                                    }
+                                    <li><strong>Amount:</strong> @((int)Model.Amount) EGP</li>
+                                    <li><strong>Reference:</strong> @Model.ReferenceNumber</li>
+                                </ul>
+                            </div>
+                        }
+                    </div>
+
+                    <div class="alert alert-warning mb-4">
+                        <h6><i class="fas fa-info-circle me-2"></i>Next Steps</h6>
+                        <p class="mb-0">
+                            After completing your payment, click the button below to verify your payment status.
+                            Once verified, your job will be automatically updated.
+                        </p>
+                    </div>
+
+                    <form asp-action="VerifyPayment" method="post" class="text-center">
+                        <input type="hidden" name="referenceNumber" value="@Model.ReferenceNumber" />
+                        <button type="submit" class="btn btn-primary btn-lg">
+                            <i class="fas fa-sync-alt me-2"></i>Verify Payment
+                        </button>
+                    </form>
+
+                    <div class="text-center mt-3">
+                        <a asp-controller="Jobs" asp-action="Details" asp-route-id="@Model.JobId" 
+                           class="btn btn-outline-secondary">
+                            <i class="fas fa-arrow-left me-2"></i>Back to Job Details
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div> 

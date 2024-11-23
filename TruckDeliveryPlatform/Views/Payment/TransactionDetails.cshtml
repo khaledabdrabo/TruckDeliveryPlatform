@@ -1,0 +1,187 @@
+@model Transaction
+
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header">
+                    <h4 class="card-title mb-0">
+                        <i class="fas fa-receipt me-2"></i>Transaction Details
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <!-- Transaction Status -->
+                    <div class="alert alert-@(Model.Status switch {
+                        TransactionStatus.Completed => "success",
+                        TransactionStatus.Pending => "warning",
+                        TransactionStatus.Failed => "danger",
+                        _ => "secondary"
+                    })">
+                        <div class="d-flex align-items-center">
+                            <i class="fas fa-@(Model.Status switch {
+                                TransactionStatus.Completed => "check-circle",
+                                TransactionStatus.Pending => "clock",
+                                TransactionStatus.Failed => "times-circle",
+                                _ => "info-circle"
+                            }) fa-2x me-3"></i>
+                            <div>
+                                <h5 class="alert-heading mb-1">@Model.Status</h5>
+                                <p class="mb-0">
+                                    @(Model.Status switch {
+                                        TransactionStatus.Completed => "Transaction completed successfully",
+                                        TransactionStatus.Pending => "Awaiting payment confirmation",
+                                        TransactionStatus.Failed => "Transaction failed to process",
+                                        _ => "Unknown status"
+                                    })
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Transaction Info -->
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <h5>Transaction Information</h5>
+                            <dl class="row">
+                                <dt class="col-sm-5">Reference Number:</dt>
+                                <dd class="col-sm-7">@Model.ReferenceNumber</dd>
+
+                                <dt class="col-sm-5">Amount:</dt>
+                                <dd class="col-sm-7">@((int)Model.Amount) EGP</dd>
+
+                                <dt class="col-sm-5">Type:</dt>
+                                <dd class="col-sm-7">
+                                    <span class="badge bg-@(Model.Type == TransactionType.CustomerPayment ? "success" : "info")">
+                                        @Model.Type
+                                    </span>
+                                </dd>
+
+                                <dt class="col-sm-5">Payment Method:</dt>
+                                <dd class="col-sm-7">@Model.PaymentMethod</dd>
+                            </dl>
+                        </div>
+                        <div class="col-md-6">
+                            <h5>Timing</h5>
+                            <dl class="row">
+                                <dt class="col-sm-5">Created:</dt>
+                                <dd class="col-sm-7">@Model.CreatedAt.ToString("MMM dd, yyyy HH:mm")</dd>
+
+                                @if (Model.CompletedAt.HasValue)
+                                {
+                                    <dt class="col-sm-5">Completed:</dt>
+                                    <dd class="col-sm-7">@Model.CompletedAt.Value.ToString("MMM dd, yyyy HH:mm")</dd>
+                                }
+                            </dl>
+                        </div>
+                    </div>
+
+                    <!-- Job Details -->
+                    @if (Model.Job != null)
+                    {
+                        <div class="mb-4">
+                            <h5>Job Details</h5>
+                            <div class="card bg-light">
+                                <div class="card-body">
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <dl class="row mb-0">
+                                                <dt class="col-sm-5">Route:</dt>
+                                                <dd class="col-sm-7">@Model.Job.PickupLocation → @Model.Job.DropoffLocation</dd>
+
+                                                <dt class="col-sm-5">Status:</dt>
+                                                <dd class="col-sm-7">
+                                                    <span class="badge bg-@(Model.Job.Status switch {
+                                                        JobStatus.Active => "primary",
+                                                        JobStatus.InProgress => "info",
+                                                        JobStatus.Completed => "success",
+                                                        _ => "secondary"
+                                                    })">@Model.Job.Status</span>
+                                                </dd>
+                                            </dl>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <dl class="row mb-0">
+                                                <dt class="col-sm-5">Customer:</dt>
+                                                <dd class="col-sm-7">@Model.Customer?.FirstName @Model.Customer?.LastName</dd>
+
+                                                <dt class="col-sm-5">Truck Owner:</dt>
+                                                <dd class="col-sm-7">@Model.TruckOwner?.FirstName @Model.TruckOwner?.LastName</dd>
+                                            </dl>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    }
+
+                    <!-- Payment Details -->
+                    @if (!string.IsNullOrEmpty(Model.PaymentDetails))
+                    {
+                        <div class="mb-4">
+                            <h5>Payment Details</h5>
+                            <div class="card bg-light">
+                                <div class="card-body">
+                                    @if (Model.PaymentMethod == PaymentMethod.BankTransfer)
+                                    {
+                                        var details = Model.PaymentDetails.Split(',')
+                                            .Select(d => d.Split(':'))
+                                            .ToDictionary(d => d[0].Trim(), d => d[1].Trim());
+
+                                        <dl class="row mb-0">
+                                            @if (details.ContainsKey("Bank"))
+                                            {
+                                                <dt class="col-sm-3">Bank:</dt>
+                                                <dd class="col-sm-9">@details["Bank"]</dd>
+                                            }
+                                            @if (details.ContainsKey("Account"))
+                                            {
+                                                <dt class="col-sm-3">Account:</dt>
+                                                <dd class="col-sm-9">@details["Account"]</dd>
+                                            }
+                                        </dl>
+                                    }
+                                    else if (Model.PaymentMethod == PaymentMethod.VodafoneCash)
+                                    {
+                                        var details = Model.PaymentDetails.Split(',')
+                                            .Select(d => d.Split(':'))
+                                            .ToDictionary(d => d[0].Trim(), d => d[1].Trim());
+
+                                        <dl class="row mb-0">
+                                            @if (details.ContainsKey("Wallet Owner"))
+                                            {
+                                                <dt class="col-sm-3">Owner:</dt>
+                                                <dd class="col-sm-9">@details["Wallet Owner"]</dd>
+                                            }
+                                            @if (details.ContainsKey("Wallet Number"))
+                                            {
+                                                <dt class="col-sm-3">Number:</dt>
+                                                <dd class="col-sm-9">@details["Wallet Number"]</dd>
+                                            }
+                                        </dl>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+                    }
+
+                    <!-- Actions -->
+                    <div class="text-center">
+                        @if (Model.Status == TransactionStatus.Pending)
+                        {
+                            <form asp-action="VerifyPayment" method="post" class="d-inline">
+                                <input type="hidden" name="referenceNumber" value="@Model.ReferenceNumber" />
+                                <button type="submit" class="btn btn-success">
+                                    <i class="fas fa-sync-alt me-2"></i>Verify Payment
+                                </button>
+                            </form>
+                        }
+                        <a asp-controller="Jobs" asp-action="Details" asp-route-id="@Model.JobId" 
+                           class="btn btn-outline-secondary">
+                            <i class="fas fa-arrow-left me-2"></i>Back to Job
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div> 

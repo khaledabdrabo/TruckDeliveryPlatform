@@ -1,0 +1,194 @@
+@model PaymentStatusViewModel
+
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-body">
+                    <h2 class="card-title text-center mb-4">Payment Status</h2>
+
+                    <div class="payment-timeline mb-4">
+                        <div class="d-flex justify-content-between position-relative">
+                            <div class="timeline-step @(Model.Status >= PaymentStatus.Pending ? "active" : "")">
+                                <div class="step-icon">
+                                    <i class="fas fa-file-invoice"></i>
+                                </div>
+                                <div class="step-label">Initiated</div>
+                                <div class="step-time">@Model.CreatedAt.ToString("MMM dd, HH:mm")</div>
+                            </div>
+
+                            <div class="timeline-step @(Model.Status >= PaymentStatus.Paid ? "active" : "")">
+                                <div class="step-icon">
+                                    <i class="fas fa-money-bill-wave"></i>
+                                </div>
+                                <div class="step-label">Paid</div>
+                                @if (Model.PaidAt.HasValue)
+                                {
+                                    <div class="step-time">@Model.PaidAt.Value.ToString("MMM dd, HH:mm")</div>
+                                }
+                            </div>
+
+                            <div class="timeline-step @(Model.Status >= PaymentStatus.Completed ? "active" : "")">
+                                <div class="step-icon">
+                                    <i class="fas fa-check-circle"></i>
+                                </div>
+                                <div class="step-label">Completed</div>
+                                @if (Model.CompletedAt.HasValue)
+                                {
+                                    <div class="step-time">@Model.CompletedAt.Value.ToString("MMM dd, HH:mm")</div>
+                                }
+                            </div>
+
+                            <div class="timeline-line"></div>
+                        </div>
+                    </div>
+
+                    <div class="payment-details mb-4">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="detail-item">
+                                    <label>Reference Number</label>
+                                    <div>@Model.ReferenceNumber</div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="detail-item">
+                                    <label>Amount</label>
+                                    <div>@((int)Model.Amount) EGP</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row mt-3">
+                            <div class="col-md-6">
+                                <div class="detail-item">
+                                    <label>Payment Method</label>
+                                    <div>@Model.PaymentMethod.ToString()</div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="detail-item">
+                                    <label>Status</label>
+                                    <div>
+                                        <span class="badge bg-@(Model.Status switch {
+                                            PaymentStatus.Paid => "success",
+                                            PaymentStatus.Pending => "warning",
+                                            PaymentStatus.Overdue => "danger",
+                                            _ => "secondary"
+                                        })">@Model.Status.ToString()</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    @if (Model.Status == PaymentStatus.Pending)
+                    {
+                        <div class="payment-instructions mb-4">
+                            <h5><i class="fas fa-info-circle me-2"></i>Payment Instructions</h5>
+                            @if (Model.PaymentMethod == PaymentMethod.BankTransfer)
+                            {
+                                <div class="alert alert-secondary">
+                                    <p class="mb-2">Please transfer to:</p>
+                                    <ul class="list-unstyled">
+                                        <li><strong>Bank Name:</strong> Example Bank</li>
+                                        <li><strong>Account Name:</strong> Truck Delivery Platform</li>
+                                        <li><strong>Account Number:</strong> 1234567890</li>
+                                        <li><strong>Reference:</strong> @Model.ReferenceNumber</li>
+                                    </ul>
+                                </div>
+                            }
+                            else if (Model.PaymentMethod == PaymentMethod.VodafoneCash)
+                            {
+                                <div class="alert alert-secondary">
+                                    <p class="mb-2">Please send to:</p>
+                                    <ul class="list-unstyled">
+                                        <li><strong>Wallet Number:</strong> 01234567890</li>
+                                        <li><strong>Reference:</strong> @Model.ReferenceNumber</li>
+                                    </ul>
+                                </div>
+                            }
+                        </div>
+
+                        <div class="text-center mb-3">
+                            <form asp-action="VerifyPayment" method="post">
+                                <input type="hidden" name="referenceNumber" value="@Model.ReferenceNumber" />
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-sync-alt me-2"></i>Check Payment Status
+                                </button>
+                            </form>
+                        </div>
+                    }
+
+                    <div class="text-center">
+                        <a asp-controller="Jobs" asp-action="Details" asp-route-id="@Model.JobId" 
+                           class="btn btn-outline-primary">
+                            <i class="fas fa-arrow-left me-2"></i>Back to Job Details
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.payment-timeline {
+    padding: 20px 0;
+}
+
+.timeline-step {
+    text-align: center;
+    position: relative;
+    z-index: 1;
+    flex: 1;
+}
+
+.timeline-line {
+    position: absolute;
+    top: 30px;
+    left: 10%;
+    right: 10%;
+    height: 2px;
+    background: #dee2e6;
+    z-index: 0;
+}
+
+.step-icon {
+    width: 60px;
+    height: 60px;
+    background: #fff;
+    border: 2px solid #dee2e6;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 10px;
+    font-size: 24px;
+    color: #6c757d;
+}
+
+.timeline-step.active .step-icon {
+    border-color: #28a745;
+    color: #28a745;
+}
+
+.step-label {
+    font-weight: 500;
+    margin-bottom: 5px;
+}
+
+.step-time {
+    font-size: 12px;
+    color: #6c757d;
+}
+
+.detail-item label {
+    font-weight: 500;
+    margin-bottom: 5px;
+    color: #6c757d;
+}
+
+.detail-item div {
+    font-size: 16px;
+}
+</style> 

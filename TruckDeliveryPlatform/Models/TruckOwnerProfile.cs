@@ -52,5 +52,25 @@ namespace TruckDeliveryPlatform.Models
         }
         
         public bool IsActive { get; set; } = true;
+        
+        [Display(Name = "Waiting Hour Price")]
+        [Required]
+        [Range(0.01, double.MaxValue, ErrorMessage = "Waiting hour price must be greater than 0")]
+        public decimal WaitingHourPrice { get; set; }
+
+        public decimal CalculateWaitingPrice(decimal hours)
+        {
+            return hours * WaitingHourPrice;
+        }
+
+        public decimal CalculateTotalPrice(double distance, decimal waitingHours)
+        {
+            var deliveryPrice = CalculateEstimatedPrice(distance);
+            var waitingPrice = CalculateWaitingPrice(waitingHours);
+            return deliveryPrice + waitingPrice;
+        }
+
+        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+        public DateTime? UpdatedAt { get; set; }
     }
 } 

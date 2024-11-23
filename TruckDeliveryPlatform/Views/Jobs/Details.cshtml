@@ -24,6 +24,21 @@
         activeBids.Where(b => b.TruckOwnerId == currentUser.Id).ToList(); // Truck owners see only their bid
 }
 
+@if (isTruckOwner)
+{
+    <div class="alert alert-info">
+        <h6>Debug Info:</h6>
+        <ul>
+            <li>Is Truck Owner: @isTruckOwner</li>
+            <li>Current User ID: @currentUser.Id</li>
+            <li>Accepted Bid Truck Owner ID: @Model.AcceptedBid?.TruckOwnerId</li>
+            <li>Job Status: @Model.Status</li>
+            <li>Payment Status: @Model.PaymentStatus</li>
+            <li>Started At: @Model.StartedAt</li>
+        </ul>
+    </div>
+}
+
 <div class="container py-4">
     <div class="row">
         <div class="col-lg-8">
@@ -101,6 +116,53 @@
                             <i class="fas fa-info-circle me-2"></i>
                             Accepted Bid Amount: <strong>@((int)Model.AcceptedBidAmount.Value) EGP</strong>
                         </div>
+                    }
+
+                    <div class="mb-3">
+                        <h5><i class="fas fa-clock"></i> Waiting Hours</h5>
+                        <p>@Model.EstimatedWaitingHours Hours</p>
+                    </div>
+
+                    <div class="mb-3">
+                        <h5><i class="fas fa-money-check-alt"></i> Payment Status</h5>
+                        <span class="badge bg-@(Model.PaymentStatus switch {
+                            PaymentStatus.Paid => "success",
+                            PaymentStatus.Pending => "warning",
+                            PaymentStatus.Completed => "info",
+                            PaymentStatus.Overdue => "danger",
+                            _ => "secondary"
+                        })">@Model.PaymentStatus</span>
+                        @if (Model.PaidAmount.HasValue)
+                        {
+                            <p class="mt-2">
+                                <strong>Paid Amount:</strong> @((int)Model.PaidAmount.Value) EGP
+                                <br />
+                                <strong>Paid At:</strong> @Model.PaidAt?.ToString("MMM dd, yyyy HH:mm")
+                            </p>
+                        }
+                    </div>
+
+                    @if (isTruckOwner && Model.AcceptedBid?.TruckOwnerId == currentUser.Id)
+                    {
+                        @if ((Model.Status == JobStatus.Accepted || Model.Status == JobStatus.InProgress) && 
+                              Model.PaymentStatus == PaymentStatus.Paid && !Model.StartedAt.HasValue)
+                        {
+                            <div class="mt-3">
+                                <form asp-controller="Jobs" asp-action="StartTrip" method="post" class="d-inline">
+                                    <input type="hidden" name="jobId" value="@Model.Id" />
+                                    <button type="submit" class="btn btn-success" 
+                                            onclick="return confirm('Are you sure you want to start this trip?')">
+                                        <i class="fas fa-truck me-2"></i>Start Trip
+                                    </button>
+                                </form>
+                            </div>
+                        }
+                        else if (Model.StartedAt.HasValue)
+                        {
+                            <div class="alert alert-info mt-3">
+                                <i class="fas fa-clock me-2"></i>Trip started at: @Model.StartedAt.Value.ToString("MMM dd, yyyy HH:mm")
+                            </div>
+                        }
                     }
                 </div>
             </div>
@@ -216,74 +278,42 @@
                         var truckOwnerProfile = await Context.TruckOwnerProfiles
                             .FirstOrDefaultAsync(p => p.UserId == bid.TruckOwnerId);
 
-                        <div class="card mb-2 @(bid.Status switch {
-                            BidStatus.Accepted => "border-success",
-                            BidStatus.Selected => "border-warning",
-                            BidStatus.Rejected => "border-danger",
-                            BidStatus.Withdrawn => "border-secondary",
-                            _ => ""
-                        })">
+                        <div class="card mb-2">
                             <div class="card-body">
                                 <div class="d-flex justify-content-between align-items-center mb-3">
                                     <div>
-                                        <h6 class="mb-0">
-                                            @if (isTruckOwner)
+                                        <h6>
+                                            @if (truckOwnerProfile != null)
                                             {
-                                                <span>Your Bid</span>
-                                            }
-                                            else
-                                            {
-                                                <div class="d-flex align-items-center">
-                                                    @if (!string.IsNullOrEmpty(truckOwnerProfile?.ProfileImagePath))
-                                                    {
-                                                        <img src="@truckOwnerProfile.ProfileImagePath" 
-                                                             class="rounded-circle me-2" 
-                                                             style="width: 40px; height: 40px; object-fit: cover;" 
-                                                             alt="Profile Image" />
-                                                    }
-                                                    else
-                                                    {
-                                                        <i class="fas fa-user-circle me-2" style="font-size: 40px;"></i>
-                                                    }
-                                                    <div>
-                                                        <div>@bid.TruckOwner.FirstName @bid.TruckOwner.LastName</div>
-                                                        <small class="text-muted">@truckOwnerProfile?.CompanyName</small>
-                                                    </div>
-                                                </div>
+                                                @truckOwnerProfile.CompanyName
                                             }
                                         </h6>
+                                        @if (isCustomer)
+                                        {
+                                            <div class="text-muted">Bid Rank: #@bidRankings[bid.Id]</div>
+                                        }
                                     </div>
-                                    @switch (bid.Status)
-                                    {
-                                        case BidStatus.Accepted:
-                                            <span class="badge bg-success">Accepted</span>
-                                            break;
-                                        case BidStatus.Selected:
-                                            <span class="badge bg-warning">Waiting for Confirmation</span>
-                                            break;
-                                        case BidStatus.Rejected:
-                                            <span class="badge bg-danger">Rejected</span>
-                                            break;
-                                        case BidStatus.Withdrawn:
-                                            <span class="badge bg-secondary">Withdrawn</span>
-                                            break;
-                                        default:
-                                            <span class="badge bg-info">Pending</span>
-                                            break;
-                                    }
+                                    <span class="badge bg-@(bid.Status switch {
+                                        BidStatus.Accepted => "success",
+                                        BidStatus.Rejected => "danger",
+                                        BidStatus.Selected => "warning",
+                                        _ => "info"
+                                    })">@bid.Status</span>
                                 </div>
 
-                                @if (!isTruckOwner && !string.IsNullOrEmpty(truckOwnerProfile?.TruckImagePath))
-                                {
-                                    <div class="mb-3">
-                                        <img src="@truckOwnerProfile.TruckImagePath" 
-                                             class="img-fluid rounded" 
-                                             style="max-height: 150px; width: 100%; object-fit: cover;" 
-                                             alt="Truck Image" />
+                                <div class="bid-details">
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <p><strong>Delivery Price:</strong> @((int)bid.BidAmount) EGP</p>
+                                            <p><strong>Waiting Hour Rate:</strong> @((int)truckOwnerProfile.WaitingHourPrice) EGP/hour</p>
+                                            @* <p><strong>Total Waiting Hours:</strong> @Model.EstimatedWaitingHours hours</p> *@
+                                            @* <p><strong>Waiting Price:</strong> @((int)(Model.EstimatedWaitingHours * truckOwnerProfile.WaitingHourPrice)) EGP</p> *@
+                                            <p class="h5 text-primary"><strong>Total Price:</strong> @((int)(bid.BidAmount + ((Model.EstimatedWaitingHours-1) * truckOwnerProfile.WaitingHourPrice))) EGP</p>
+                                            @* <p class="h5 text-primary"><strong>Total Price:</strong> @((int)(bid.BidAmount)) EGP</p> *@
+                                        </div>
                                     </div>
-                                }
+                                </div>
 
-                                <p class="mb-1">Amount: @((int)bid.BidAmount) EGP</p>
                                 <p class="mb-1">Delivery by: @bid.EstimatedDeliveryTime.ToString("MMM dd, yyyy HH:mm")</p>
                                 @if (!string.IsNullOrEmpty(bid.Notes))
                                 {
@@ -329,6 +359,48 @@
                                         </form>
                                     </div>
                                 }
+
+                                <div class="bid-actions mt-3">
+                                    @if (isCustomer)
+                                    {
+                                        @if (bid.Status == BidStatus.Accepted && Model.PaymentStatus == PaymentStatus.Pending)
+                                        {
+                                            <a asp-controller="Payment" asp-action="ProcessJobPayment" asp-route-jobId="@Model.Id" 
+                                               class="btn btn-success">
+                                                <i class="fas fa-credit-card me-2"></i>Proceed to Payment
+                                            </a>
+                                        }
+                                        else if (Model.Status == JobStatus.Active && !Model.HasAcceptedBid)
+                                        {
+                                            <form asp-action="SelectBid" method="post" style="display: inline;">
+                                                <input type="hidden" name="bidId" value="@bid.Id" />
+                                                <button type="submit" class="btn btn-primary" 
+                                                        onclick="return confirm('Are you sure you want to select this bid?')">
+                                                    <i class="fas fa-check me-2"></i>Select Bid
+                                                </button>
+                                            </form>
+                                        }
+                                    }
+                                    @if (isTruckOwner && bid.Status == BidStatus.Selected)
+                                    {
+                                        <div class="btn-group">
+                                            <form asp-action="ConfirmBid" method="post" style="display: inline;">
+                                                <input type="hidden" name="bidId" value="@bid.Id" />
+                                                <button type="submit" class="btn btn-success" 
+                                                        onclick="return confirm('Are you sure you want to accept this job?')">
+                                                    <i class="fas fa-check me-2"></i>Accept
+                                                </button>
+                                            </form>
+                                            <form asp-action="DeclineBid" method="post" style="display: inline;">
+                                                <input type="hidden" name="bidId" value="@bid.Id" />
+                                                <button type="submit" class="btn btn-danger" 
+                                                        onclick="return confirm('Are you sure you want to decline this job?')">
+                                                    <i class="fas fa-times me-2"></i>Decline
+                                                </button>
+                                            </form>
+                                        </div>
+                                    }
+                                </div>
                             </div>
                         </div>
                     }

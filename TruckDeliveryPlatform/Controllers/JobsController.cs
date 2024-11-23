@@ -7,6 +7,10 @@ using TruckDeliveryPlatform.Models;
 using TruckDeliveryPlatform.Models.ViewModels;
 using TruckDeliveryPlatform.Services;
 using TruckDeliveryPlatform.Helpers;
+using Microsoft.Extensions.Localization;
+using System.Security.Claims;
+using Microsoft.AspNetCore.SignalR;
+using TruckDeliveryPlatform.Hubs;
 
 namespace TruckDeliveryPlatform.Controllers
 {
@@ -15,11 +19,13 @@ namespace TruckDeliveryPlatform.Controllers
     {
         private readonly ApplicationDbContext _context;
         private readonly UserManager<ApplicationUser> _userManager;
+        private readonly IHubContext<NotificationHub> _hubContext;
 
-        public JobsController(ApplicationDbContext context, UserManager<ApplicationUser> userManager)
+        public JobsController(ApplicationDbContext context, UserManager<ApplicationUser> userManager, IHubContext<NotificationHub> hubContext)
         {
             _context = context;
             _userManager = userManager;
+            _hubContext = hubContext;
         }
 
         // GET: Jobs
@@ -106,7 +112,8 @@ namespace TruckDeliveryPlatform.Controllers
                     Status = JobStatus.Active,
                     CreatedAt = DateTime.UtcNow,
                     AcceptedBidId = null,
-                    CancelledAt = null
+                    CancelledAt = null,
+                    EstimatedWaitingHours = model.EstimatedWaitingHours
                 };
 
                 _context.Jobs.Add(job);
@@ -181,8 +188,9 @@ namespace TruckDeliveryPlatform.Controllers
             using var transaction = await _context.Database.BeginTransactionAsync();
             try
             {
-                // Mark the selected bid as Selected (waiting for confirmation)
+                // Mark the selected bid as Selected (waiting for truck owner confirmation)
                 bid.Status = BidStatus.Selected;
+                bid.Job.Status = JobStatus.Selected; // Update job status to Selected
                 
                 // Mark all other bids as rejected
                 foreach (var otherBid in bid.Job.Bids.Where(b => b.Id != bidId))
@@ -190,18 +198,20 @@ namespace TruckDeliveryPlatform.Controllers
                     otherBid.Status = BidStatus.Rejected;
                 }
 
+                // Add notification for truck owner (if you have notification system)
+                // TODO: Add notification logic here
+
                 await _context.SaveChangesAsync();
                 await transaction.CommitAsync();
 
-                // Send notification to truck owner (you can implement this later)
-                // await _notificationService.NotifyTruckOwner(bid.TruckOwnerId, "A customer has selected your bid");
-
+                TempData["SuccessMessage"] = "Bid selected successfully. Waiting for truck owner confirmation.";
                 return RedirectToAction(nameof(Details), new { id = bid.JobId });
             }
             catch (Exception)
             {
                 await transaction.RollbackAsync();
-                throw;
+                TempData["ErrorMessage"] = "Failed to select bid. Please try again.";
+                return RedirectToAction(nameof(Details), new { id = bid.JobId });
             }
         }
 
@@ -230,9 +240,11 @@ namespace TruckDeliveryPlatform.Controllers
                 // Accept the bid and update job status
                 bid.Status = BidStatus.Accepted;
                 bid.Job.Status = JobStatus.Accepted;
+                bid.Job.AcceptedBid = bid;  // Set the AcceptedBid navigation property
                 bid.Job.AcceptedBidId = bid.Id;
                 bid.Job.AcceptedAt = DateTime.UtcNow;
                 bid.Job.AcceptedBidAmount = bid.BidAmount;
+                bid.Job.PaymentStatus = PaymentStatus.Pending;
 
                 // Mark all other bids as rejected
                 foreach (var otherBid in bid.Job.Bids.Where(b => b.Id != bidId))
@@ -374,6 +386,80 @@ namespace TruckDeliveryPlatform.Controllers
 
             await _context.SaveChangesAsync();
             return RedirectToAction(nameof(Details), new { id = job.Id });
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> StartTrip(int jobId)
+        {
+            var currentUser = await _userManager.GetUserAsync(User);
+            var job = await _context.Jobs
+                .Include(j => j.AcceptedBid)
+                .Include(j => j.Customer)
+                .FirstOrDefaultAsync(j => j.Id == jobId);
+
+            if (job == null)
+                return NotFound();
+
+            // Verify this is the assigned truck owner
+            if (job.AcceptedBid?.TruckOwnerId != currentUser.Id)
+                return Forbid();
+
+            // Verify job is in correct state - allow both Accepted and InProgress status
+            if ((job.Status != JobStatus.Accepted && job.Status != JobStatus.InProgress) || 
+                job.PaymentStatus != PaymentStatus.Paid)
+            {
+                TempData["ErrorMessage"] = "Job must be accepted/in progress and paid before starting the trip";
+                return RedirectToAction(nameof(Details), new { id = jobId });
+            }
+
+            // Don't allow starting if already started
+            if (job.StartedAt.HasValue)
+            {
+                TempData["ErrorMessage"] = "Trip has already been started";
+                return RedirectToAction(nameof(Details), new { id = jobId });
+            }
+
+            using var transaction = await _context.Database.BeginTransactionAsync();
+            try
+            {
+                // Update job status and start time
+                job.Status = JobStatus.Started;
+                job.StartedAt = DateTime.UtcNow;
+
+                // Create notification for customer
+                var notification = new Notification
+                {
+                    UserId = job.CustomerId,
+                    Title = "Trip Started",
+                    Message = $"Your delivery from {job.PickupLocation} to {job.DropoffLocation} has started.",
+                    Link = Url.Action("Details", "Jobs", new { id = jobId }),
+                    IsRead = false
+                };
+
+                _context.Notifications.Add(notification);
+                await _context.SaveChangesAsync();
+                await transaction.CommitAsync();
+
+                // Send real-time notification
+                await _hubContext.Clients.User(job.CustomerId)
+                    .SendAsync("ReceiveNotification", new
+                    {
+                        title = notification.Title,
+                        message = notification.Message,
+                        link = notification.Link,
+                        timestamp = notification.CreatedAt
+                    });
+
+                TempData["SuccessMessage"] = "Trip started successfully";
+                return RedirectToAction(nameof(Details), new { id = jobId });
+            }
+            catch (Exception)
+            {
+                await transaction.RollbackAsync();
+                TempData["ErrorMessage"] = "Failed to start trip. Please try again.";
+                return RedirectToAction(nameof(Details), new { id = jobId });
+            }
         }
     }
 } 

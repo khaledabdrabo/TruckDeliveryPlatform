@@ -1,0 +1,29 @@
+/* RTL-aware flex utilities */
+.flex-row-rtl {
+  display: flex;
+  flex-direction: row;
+}
+
+[dir="rtl"] .flex-row-rtl {
+  flex-direction: row-reverse;
+}
+
+/* RTL-aware margin/padding utilities */
+.margin-start {
+  margin-left: 1rem;
+}
+
+[dir="rtl"] .margin-start {
+  margin-left: 0;
+  margin-right: 1rem;
+}
+
+/* RTL-aware positioning */
+.position-start {
+  left: 0;
+}
+
+[dir="rtl"] .position-start {
+  left: auto;
+  right: 0;
+} 

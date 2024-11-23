@@ -124,25 +124,48 @@
                     <h5 class="card-title mb-0">System Configuration</h5>
                 </div>
                 <div class="card-body">
-                    <form asp-action="UpdateSystemConfig" method="post">
-                        <div class="mb-3">
-                            <label class="form-label">Price per Kilometer</label>
-                            <div class="input-group">
-                                <input type="number" name="PricePerKilometer" class="form-control" 
-                                       value="@Model.SystemConfig.PricePerKilometer" step="0.01" min="0" />
-                                <span class="input-group-text">EGP</span>
+                    @if (Model.SystemConfig != null)
+                    {
+                        <form asp-action="UpdateSystemConfig" method="post">
+                            <div class="mb-3">
+                                <label class="form-label">Price per Kilometer</label>
+                                <div class="input-group">
+                                    <input type="number" name="pricePerKilometer" class="form-control" 
+                                           value="@(Model.SystemConfig.PricePerKilometer.ToString("F2"))" 
+                                           step="0.01" min="0" />
+                                    <span class="input-group-text">EGP</span>
+                                </div>
                             </div>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">Base Fee</label>
-                            <div class="input-group">
-                                <input type="number" name="BaseFee" class="form-control" 
-                                       value="@Model.SystemConfig.BaseFee" step="0.01" min="0" />
-                                <span class="input-group-text">EGP</span>
+                            <div class="mb-3">
+                                <label class="form-label">Base Fee</label>
+                                <div class="input-group">
+                                    <input type="number" name="baseFee" class="form-control" 
+                                           value="@(Model.SystemConfig.BaseFee.ToString("F2"))" 
+                                           step="0.01" min="0" />
+                                    <span class="input-group-text">EGP</span>
+                                </div>
                             </div>
+                            <div class="mb-3">
+                                <label class="form-label">Transaction Fee</label>
+                                <div class="input-group">
+                                    <input type="number" name="transactionFee" class="form-control" 
+                                           value="@(Model.SystemConfig.TransactionFee.ToString("F2"))" 
+                                           step="0.01" min="0" />
+                                    <span class="input-group-text">EGP</span>
+                                </div>
+                                <small class="text-muted">This fee is charged for each transaction</small>
+                            </div>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save me-2"></i>Update Configuration
+                            </button>
+                        </form>
+                    }
+                    else
+                    {
+                        <div class="alert alert-warning">
+                            No system configuration found. Please create one.
                         </div>
-                        <button type="submit" class="btn btn-primary">Update Configuration</button>
-                    </form>
+                    }
                 </div>
             </div>
         </div>

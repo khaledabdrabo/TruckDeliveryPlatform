@@ -151,7 +151,8 @@
                                     <div><strong>Weight:</strong> @job.Weight kg</div>
                                     <div><strong>Size:</strong> @job.Size</div>
                                     <div><strong>Pickup Date:</strong> @job.PreferredPickupDate.ToString("MMM dd, yyyy")</div>
-                                    <div><strong>Current Bids:</strong> @job.BidsCount</div>
+                                    <div><strong>Waiting Hours:</strong> @job.EstimatedWaitingHours hours</div>
+                                    <div><strong>Current Bids:</strong> @job.BidsCount bids</div>
                                 </div>
                                 <div class="mb-3">
                                     <div class="row">
@@ -162,34 +163,25 @@
                                             </div>
                                         </div>
                                         <div class="col-md-6">
-                                            <div class="text-muted">Your Est. Price:</div>
-                                            <div class="h5 @((int)myEstimate > (int)job.EstimatedCost ? "text-danger" : "text-success")">
-                                                @((int)myEstimate) EGP
-                                                @if ((int)myEstimate > (int)job.EstimatedCost)
-                                                {
-                                                    <small class="text-danger">
-                                                        (+@((int)(myEstimate - job.EstimatedCost)) EGP)
-                                                    </small>
-                                                }
-                                                else if ((int)myEstimate < (int)job.EstimatedCost)
-                                                {
-                                                    <small class="text-success">
-                                                        (-@((int)(job.EstimatedCost - myEstimate)) EGP)
-                                                    </small>
-                                                }
+                                            <div class="text-muted">Est. Waiting Cost:</div>
+                                            <div class="h5 text-info">
+                                                @((int)(job.EstimatedWaitingHours * profile.WaitingHourPrice)) EGP
                                             </div>
                                         </div>
                                     </div>
                                     <div class="text-muted mt-2">
                                         <small>
-                                            <i class="fas fa-route me-1"></i>Distance: @distance.ToString("F1") km
+                                            <i class="fas fa-clock me-1"></i>Waiting Hours: @job.EstimatedWaitingHours
                                             <span class="mx-2">|</span>
-                                            <i class="fas fa-tag me-1"></i>Your Rate: @((int)profile.PricePerKilometer) EGP/km
+                                            <i class="fas fa-dollar-sign me-1"></i>Your Rate: @((int)profile.WaitingHourPrice) EGP/hour
                                         </small>
                                     </div>
                                 </div>
 
                                 <div class="d-flex justify-content-between align-items-center">
+                                    <small class="text-muted">
+                                        Posted @job.CreatedAt.ToString("MMM dd, yyyy HH:mm")
+                                    </small>
                                     <a asp-controller="Jobs" asp-action="Details" asp-route-id="@job.Id" 
                                        class="btn btn-primary">
                                         View Details
