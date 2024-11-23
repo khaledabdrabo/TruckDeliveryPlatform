@@ -193,4 +193,29 @@ body {
 #notificationBadge {
     font-size: 0.6rem;
     padding: 0.25em 0.4em;
+}
+
+.rating {
+    display: flex;
+    flex-direction: row-reverse;
+    justify-content: flex-end;
+}
+
+.rating input {
+    display: none;
+}
+
+.rating label {
+    cursor: pointer;
+    width: 30px;
+    height: 30px;
+    margin: 0 2px;
+    font-size: 24px;
+    color: #ddd;
+}
+
+.rating label:hover,
+.rating label:hover ~ label,
+.rating input:checked ~ label {
+    color: #ffd700;
 } 

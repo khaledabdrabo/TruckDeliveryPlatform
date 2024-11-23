@@ -10,6 +10,8 @@ using System.Threading.Tasks;
 using TruckDeliveryPlatform.Data;
 using TruckDeliveryPlatform.Models;
 using TruckDeliveryPlatform.Models.ViewModels;
+using Microsoft.AspNetCore.SignalR;
+using TruckDeliveryPlatform.Hubs;
 
 namespace TruckDeliveryPlatform.Controllers
 {
@@ -18,11 +20,16 @@ namespace TruckDeliveryPlatform.Controllers
     {
         private readonly ApplicationDbContext _context;
         private readonly UserManager<ApplicationUser> _userManager;
+        private readonly IHubContext<NotificationHub> _hubContext;
 
-        public PaymentController(ApplicationDbContext context, UserManager<ApplicationUser> userManager)
+        public PaymentController(
+            ApplicationDbContext context, 
+            UserManager<ApplicationUser> userManager,
+            IHubContext<NotificationHub> hubContext)
         {
             _context = context;
             _userManager = userManager;
+            _hubContext = hubContext;
         }
 
         [HttpGet]
@@ -69,7 +76,6 @@ namespace TruckDeliveryPlatform.Controllers
             if (!ModelState.IsValid)
                 return View(model);
 
-            // Verify reference number matches what we generated
             if (TempData["ReferenceNumber"]?.ToString() != model.ReferenceNumber)
             {
                 return BadRequest("Invalid reference number");
@@ -77,6 +83,8 @@ namespace TruckDeliveryPlatform.Controllers
 
             var job = await _context.Jobs
                 .Include(j => j.AcceptedBid)
+                .Include(j => j.PickupLocationNavigation)
+                .Include(j => j.DropoffLocationNavigation)
                 .FirstOrDefaultAsync(j => j.Id == model.JobId);
 
             if (job == null || job.CustomerId != User.FindFirstValue(ClaimTypes.NameIdentifier))
@@ -97,7 +105,7 @@ namespace TruckDeliveryPlatform.Controllers
                     Type = TransactionType.CustomerPayment,
                     Amount = totalAmount,
                     PaymentMethod = model.PaymentMethod,
-                    PaymentDetails = "",//model.PaymentDetails,
+                    PaymentDetails = "",
                     Status = TransactionStatus.Pending,
                     JobId = job.Id,
                     CustomerId = job.CustomerId,
@@ -111,10 +119,31 @@ namespace TruckDeliveryPlatform.Controllers
                 job.PaymentStatus = PaymentStatus.Pending;
                 job.PaymentDueDate = DateTime.UtcNow.AddDays(1);
 
+                // Create notification for truck owner
+                var notification = new Notification
+                {
+                    UserId = job.AcceptedBid.TruckOwnerId,
+                    Title = "Payment Initiated",
+                    Message = $"Customer has initiated payment of ${totalAmount} for the job from {job.PickupLocationNavigation.City} to {job.DropoffLocationNavigation.City}. Reference: {model.ReferenceNumber}",
+                    Link = Url.Action("Details", "Jobs", new { id = job.Id }),
+                    IsRead = false,
+                    CreatedAt = DateTime.UtcNow
+                };
+
+                _context.Notifications.Add(notification);
                 await _context.SaveChangesAsync();
+
+                // Send real-time notification to truck owner
+                await _hubContext.Clients.User(job.AcceptedBid.TruckOwnerId).SendAsync("ReceiveNotification", new
+                {
+                    title = notification.Title,
+                    message = notification.Message,
+                    link = notification.Link,
+                    timestamp = notification.CreatedAt
+                });
+
                 await transaction.CommitAsync();
 
-                // Redirect to payment gateway or show payment instructions
                 return RedirectToAction("PaymentInstructions", new { id = paymentTransaction.Id });
             }
             catch

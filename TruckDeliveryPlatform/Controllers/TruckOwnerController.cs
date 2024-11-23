@@ -11,6 +11,8 @@ using System.IO;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Localization;
 using System.Security.Claims;
+using Microsoft.AspNetCore.SignalR;
+using TruckDeliveryPlatform.Hubs;
 
 namespace TruckDeliveryPlatform.Controllers
 {
@@ -21,13 +23,15 @@ namespace TruckDeliveryPlatform.Controllers
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly ImageService _imageService;
         private readonly ILogger<TruckOwnerController> _logger;
+        private readonly IHubContext<NotificationHub> _hubContext;
 
-        public TruckOwnerController(ApplicationDbContext context, UserManager<ApplicationUser> userManager, ImageService imageService, ILogger<TruckOwnerController> logger)
+        public TruckOwnerController(ApplicationDbContext context, UserManager<ApplicationUser> userManager, ImageService imageService, ILogger<TruckOwnerController> logger, IHubContext<NotificationHub> hubContext)
         {
             _context = context;
             _userManager = userManager;
             _imageService = imageService;
             _logger = logger;
+            _hubContext = hubContext;
         }
 
         public async Task<IActionResult> Dashboard(int? page)
@@ -200,7 +204,11 @@ namespace TruckDeliveryPlatform.Controllers
             if (profile == null)
                 return RedirectToAction("CreateProfile");
 
-            var job = await _context.Jobs.FindAsync(jobId);
+            var job = await _context.Jobs
+                .Include(j => j.PickupLocationNavigation)
+                .Include(j => j.DropoffLocationNavigation)
+                .FirstOrDefaultAsync(j => j.Id == jobId);
+
             if (job == null)
                 return NotFound();
 
@@ -216,8 +224,30 @@ namespace TruckDeliveryPlatform.Controllers
                 CreatedAt = DateTime.UtcNow
             };
 
+            // Create notification for customer
+            var notification = new Notification
+            {
+                UserId = job.CustomerId,
+                Title = "New Bid Received",
+                Message = $"A new bid of ${bidAmount} has been placed on your job from {job.PickupLocationNavigation.City} to {job.DropoffLocationNavigation.City}",
+                Link = Url.Action("Details", "Jobs", new { id = jobId }),
+                IsRead = false,
+                CreatedAt = DateTime.UtcNow
+            };
+
             _context.Bids.Add(bid);
+            _context.Notifications.Add(notification);
             await _context.SaveChangesAsync();
+
+            // Send real-time notification using NotificationHub
+            var hubContext = HttpContext.RequestServices.GetRequiredService<IHubContext<NotificationHub>>();
+            await hubContext.Clients.User(job.CustomerId).SendAsync("ReceiveNotification", new
+            {
+                title = notification.Title,
+                message = notification.Message,
+                link = notification.Link,
+                timestamp = notification.CreatedAt
+            });
 
             TempData["Message"] = "Bid placed successfully";
             return RedirectToAction("Details", "Jobs", new { id = jobId });

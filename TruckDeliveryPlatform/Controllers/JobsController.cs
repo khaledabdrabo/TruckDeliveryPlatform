@@ -174,6 +174,8 @@ namespace TruckDeliveryPlatform.Controllers
             var bid = await _context.Bids
                 .Include(b => b.Job)
                     .ThenInclude(j => j.Bids)
+                .Include(b => b.Job.PickupLocationNavigation)
+                .Include(b => b.Job.DropoffLocationNavigation)
                 .FirstOrDefaultAsync(b => b.Id == bidId);
 
             if (bid == null)
@@ -190,7 +192,7 @@ namespace TruckDeliveryPlatform.Controllers
             {
                 // Mark the selected bid as Selected (waiting for truck owner confirmation)
                 bid.Status = BidStatus.Selected;
-                bid.Job.Status = JobStatus.Selected; // Update job status to Selected
+                bid.Job.Status = JobStatus.Selected;
                 
                 // Mark all other bids as rejected
                 foreach (var otherBid in bid.Job.Bids.Where(b => b.Id != bidId))
@@ -198,10 +200,29 @@ namespace TruckDeliveryPlatform.Controllers
                     otherBid.Status = BidStatus.Rejected;
                 }
 
-                // Add notification for truck owner (if you have notification system)
-                // TODO: Add notification logic here
+                // Create notification for truck owner
+                var notification = new Notification
+                {
+                    UserId = bid.TruckOwnerId,
+                    Title = "Bid Selected",
+                    Message = $"Your bid of ${bid.BidAmount} for the job from {bid.Job.PickupLocationNavigation.City} to {bid.Job.DropoffLocationNavigation.City} has been selected! Please confirm or decline.",
+                    Link = Url.Action("Details", "Jobs", new { id = bid.JobId }),
+                    IsRead = false,
+                    CreatedAt = DateTime.UtcNow
+                };
 
+                _context.Notifications.Add(notification);
                 await _context.SaveChangesAsync();
+
+                // Send real-time notification
+                await _hubContext.Clients.User(bid.TruckOwnerId).SendAsync("ReceiveNotification", new
+                {
+                    title = notification.Title,
+                    message = notification.Message,
+                    link = notification.Link,
+                    timestamp = notification.CreatedAt
+                });
+
                 await transaction.CommitAsync();
 
                 TempData["SuccessMessage"] = "Bid selected successfully. Waiting for truck owner confirmation.";
@@ -223,6 +244,8 @@ namespace TruckDeliveryPlatform.Controllers
             var bid = await _context.Bids
                 .Include(b => b.Job)
                     .ThenInclude(j => j.Bids)
+                .Include(b => b.Job.PickupLocationNavigation)
+                .Include(b => b.Job.DropoffLocationNavigation)
                 .FirstOrDefaultAsync(b => b.Id == bidId);
 
             if (bid == null)
@@ -240,7 +263,7 @@ namespace TruckDeliveryPlatform.Controllers
                 // Accept the bid and update job status
                 bid.Status = BidStatus.Accepted;
                 bid.Job.Status = JobStatus.Accepted;
-                bid.Job.AcceptedBid = bid;  // Set the AcceptedBid navigation property
+                bid.Job.AcceptedBid = bid;
                 bid.Job.AcceptedBidId = bid.Id;
                 bid.Job.AcceptedAt = DateTime.UtcNow;
                 bid.Job.AcceptedBidAmount = bid.BidAmount;
@@ -252,15 +275,39 @@ namespace TruckDeliveryPlatform.Controllers
                     otherBid.Status = BidStatus.Rejected;
                 }
 
+                // Create notification for customer
+                var notification = new Notification
+                {
+                    UserId = bid.Job.CustomerId,
+                    Title = "Bid Confirmed",
+                    Message = $"The truck owner has confirmed your selected bid of ${bid.BidAmount} for your delivery from {bid.Job.PickupLocationNavigation.City} to {bid.Job.DropoffLocationNavigation.City}. Please proceed with payment.",
+                    Link = Url.Action("Details", "Jobs", new { id = bid.JobId }),
+                    IsRead = false,
+                    CreatedAt = DateTime.UtcNow
+                };
+
+                _context.Notifications.Add(notification);
                 await _context.SaveChangesAsync();
+
+                // Send real-time notification to customer
+                await _hubContext.Clients.User(bid.Job.CustomerId).SendAsync("ReceiveNotification", new
+                {
+                    title = notification.Title,
+                    message = notification.Message,
+                    link = notification.Link,
+                    timestamp = notification.CreatedAt
+                });
+
                 await transaction.CommitAsync();
 
+                TempData["SuccessMessage"] = "Bid confirmed successfully.";
                 return RedirectToAction(nameof(Details), new { id = bid.JobId });
             }
             catch (Exception)
             {
                 await transaction.RollbackAsync();
-                throw;
+                TempData["ErrorMessage"] = "Failed to confirm bid. Please try again.";
+                return RedirectToAction(nameof(Details), new { id = bid.JobId });
             }
         }
 
@@ -458,6 +505,80 @@ namespace TruckDeliveryPlatform.Controllers
             {
                 await transaction.RollbackAsync();
                 TempData["ErrorMessage"] = "Failed to start trip. Please try again.";
+                return RedirectToAction(nameof(Details), new { id = jobId });
+            }
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> EndTrip(int jobId, int rating, string customerCooperation, string comments)
+        {
+            var currentUser = await _userManager.GetUserAsync(User);
+            var job = await _context.Jobs
+                .Include(j => j.Customer)
+                .Include(j => j.AcceptedBid)
+                .Include(j => j.PickupLocationNavigation)
+                .Include(j => j.DropoffLocationNavigation)
+                .FirstOrDefaultAsync(j => j.Id == jobId);
+
+            if (job == null || job.AcceptedBid?.TruckOwnerId != currentUser.Id)
+                return NotFound();
+
+            if (job.Status != JobStatus.Started || job.PaymentStatus != PaymentStatus.Paid)
+                return BadRequest("Job must be started and paid to end the trip");
+
+            using var transaction = await _context.Database.BeginTransactionAsync();
+            try
+            {
+                // Update job status
+                job.Status = JobStatus.Completed;
+                job.CompletedAt = DateTime.UtcNow;
+
+                // Save truck owner's feedback
+                var feedback = new TripFeedback
+                {
+                    JobId = jobId,
+                    TruckOwnerId = currentUser.Id,
+                    CustomerRating = rating,
+                    CustomerCooperation = customerCooperation,
+                    Comments = comments,
+                    CreatedAt = DateTime.UtcNow
+                };
+
+                _context.TripFeedbacks.Add(feedback);
+
+                // Create notification for customer
+                var notification = new Notification
+                {
+                    UserId = job.CustomerId,
+                    Title = "Trip Completed",
+                    Message = $"Your delivery from {job.PickupLocationNavigation.City} to {job.DropoffLocationNavigation.City} has been completed. Please rate your experience.",
+                    Link = Url.Action("Details", "Jobs", new { id = jobId }),
+                    IsRead = false,
+                    CreatedAt = DateTime.UtcNow
+                };
+
+                _context.Notifications.Add(notification);
+                await _context.SaveChangesAsync();
+
+                // Send real-time notification
+                await _hubContext.Clients.User(job.CustomerId).SendAsync("ReceiveNotification", new
+                {
+                    title = notification.Title,
+                    message = notification.Message,
+                    link = notification.Link,
+                    timestamp = notification.CreatedAt
+                });
+
+                await transaction.CommitAsync();
+
+                TempData["SuccessMessage"] = "Trip completed successfully. Thank you for your feedback!";
+                return RedirectToAction(nameof(Details), new { id = jobId });
+            }
+            catch (Exception)
+            {
+                await transaction.RollbackAsync();
+                TempData["ErrorMessage"] = "Failed to complete trip. Please try again.";
                 return RedirectToAction(nameof(Details), new { id = jobId });
             }
         }

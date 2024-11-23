@@ -22,4 +22,6 @@ using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Microsoft.AspNetCore.Mvc.Formatters;
 using Microsoft.AspNetCore.Mvc.Controllers;
+using Microsoft.AspNetCore.SignalR;
+using TruckDeliveryPlatform.Hubs;
  

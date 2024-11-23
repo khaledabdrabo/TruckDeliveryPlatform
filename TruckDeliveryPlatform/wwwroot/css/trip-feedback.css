@@ -1,0 +1,51 @@
+.rating-container {
+    background: #f8f9fa;
+    padding: 15px;
+    border-radius: 8px;
+}
+
+.cooperation-options .btn-outline-primary {
+    border-radius: 20px;
+}
+
+.cooperation-options .btn-check:checked + .btn-outline-primary {
+    background-color: #0d6efd;
+    color: white;
+}
+
+.delivery-details {
+    border-left: 4px solid #198754;
+}
+
+.modal-lg {
+    max-width: 800px;
+}
+
+.rating {
+    display: flex;
+    flex-direction: row-reverse;
+    justify-content: center;
+    gap: 10px;
+}
+
+.rating label {
+    cursor: pointer;
+    font-size: 30px;
+    transition: all 0.2s ease;
+}
+
+.rating label:hover,
+.rating label:hover ~ label,
+.rating input:checked ~ label {
+    color: #ffd700;
+    transform: scale(1.1);
+}
+
+.rating input:checked ~ label {
+    animation: bounce 0.2s ease-in-out;
+}
+
+@keyframes bounce {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.2); }
+} 

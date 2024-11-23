@@ -71,6 +71,7 @@ namespace TruckDeliveryPlatform.Models
         public virtual Location PickupLocationNavigation { get; set; }
         public virtual Location DropoffLocationNavigation { get; set; }
         public virtual ICollection<Bid> Bids { get; set; } = new List<Bid>();
+        public virtual ICollection<TripFeedback> TripFeedbacks { get; set; }
 
         // Accepted bid reference
         public int? AcceptedBidId { get; set; }

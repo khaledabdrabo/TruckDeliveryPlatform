@@ -23,6 +23,7 @@ namespace TruckDeliveryPlatform.Data
         public DbSet<SystemWallet> SystemWallets { get; set; }
         public DbSet<TransactionFeeHistory> TransactionFeeHistory { get; set; }
         public DbSet<Notification> Notifications { get; set; }
+        public DbSet<TripFeedback> TripFeedbacks { get; set; }
 
         protected override void OnModelCreating(ModelBuilder builder)
         {
@@ -345,6 +346,19 @@ namespace TruckDeliveryPlatform.Data
                 .WithMany()
                 .HasForeignKey(n => n.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
+
+            builder.Entity<TripFeedback>(entity =>
+            {
+                entity.HasOne(f => f.Job)
+                    .WithMany(j => j.TripFeedbacks)
+                    .HasForeignKey(f => f.JobId)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasOne(f => f.TruckOwner)
+                    .WithMany()
+                    .HasForeignKey(f => f.TruckOwnerId)
+                    .OnDelete(DeleteBehavior.Restrict);
+            });
         }
     }
 } 
